@@ -1,0 +1,21 @@
+# Segredos — nunca versionar
+.env
+.env.*
+!.env.example
+*.secret
+.clasprc.json
+
+# Listas reais de participantes (use docs/modelo_participantes.csv como modelo)
+participantes*.csv
+*.xlsx
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Configuração local do Claude Code
+.claude/

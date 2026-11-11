@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Amigo Secreto · Mestre dos Dados</title>
+  <meta name="description" content="Sorteio de amigo secreto gratuito, com grupos familiares e envio por e-mail pelo seu próprio Gmail.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/marca.css">
+</head>
+<body>
+  <header class="topo">
+    <svg class="rede" aria-hidden="true" viewBox="0 0 600 160" preserveAspectRatio="xMidYMid slice">
+      <g stroke="currentColor" stroke-width="1.5" fill="none" opacity=".35">
+        <path d="M20 140 L110 60 L190 95 L300 30 L380 80 L470 40 L580 110"/>
+        <path d="M110 60 L150 140 M300 30 L330 130 M470 40 L500 140 M190 95 L250 150"/>
+      </g>
+      <g fill="currentColor" opacity=".55">
+        <circle cx="20" cy="140" r="4"/><circle cx="110" cy="60" r="5"/><circle cx="190" cy="95" r="4"/>
+        <circle cx="300" cy="30" r="5"/><circle cx="380" cy="80" r="4"/><circle cx="470" cy="40" r="5"/>
+        <circle cx="580" cy="110" r="4"/><circle cx="150" cy="140" r="3"/><circle cx="330" cy="130" r="3"/>
+        <circle cx="500" cy="140" r="3"/><circle cx="250" cy="150" r="3"/>
+      </g>
+    </svg>
+    <div class="topo-conteudo">
+      <img src="assets/dragao.png" alt="" class="logo" width="64" height="64">
+      <div>
+        <h1>Amigo Secreto</h1>
+        <p class="assinatura">by <strong>Mestre dos Dados</strong></p>
+      </div>
+      <button type="button" id="tema" class="btn-icone" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
+    </div>
+  </header>
+
+  <nav class="passos" aria-label="Etapas">
+    <ol id="passos">
+      <li><button type="button" data-ir="1"><span>1</span>Conectar</button></li>
+      <li><button type="button" data-ir="2"><span>2</span>Evento</button></li>
+      <li><button type="button" data-ir="3"><span>3</span>Participantes</button></li>
+      <li><button type="button" data-ir="4"><span>4</span>Regras</button></li>
+      <li><button type="button" data-ir="5"><span>5</span>Sortear</button></li>
+    </ol>
+  </nav>
+
+  <main>
+    <!-- 1. CONECTAR ---------------------------------------------------- -->
+    <section class="etapa" data-etapa="1" aria-labelledby="t1">
+      <h2 id="t1">Conecte o seu Gmail</h2>
+      <p class="lead">Os e-mails saem da <strong>sua</strong> conta Google, por um pequeno script gratuito que fica com você.
+        Nenhuma senha passa por este site, e nem você verá quem tirou quem. Leva uns 5 minutos e só precisa ser feito uma vez.</p>
+
+      <details class="tutorial" id="tutorial">
+        <summary>Passo a passo (primeira vez)</summary>
+        <ol class="lista-passos">
+          <li>
+            <strong>Copie o código do script.</strong>
+            <div class="linha-botoes">
+              <button type="button" class="btn" id="copiar-script">Copiar código</button>
+              <a class="btn btn-sec" href="apps-script/Code.gs" download>Baixar Code.gs</a>
+              <a class="btn btn-sec" href="apps-script/Sorteio.gs" download>Baixar Sorteio.gs</a>
+            </div>
+          </li>
+          <li>Abra <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → Novo projeto</a>,
+            apague o conteúdo de <code>Código.gs</code> e <strong>cole</strong>. Dê um nome ao projeto (ex.: “Amigo Secreto”) e salve (Ctrl+S).</li>
+          <li>Na barra de cima, escolha a função <code>gerarToken</code> e clique em <strong>Executar</strong>.
+            O Google pedirá autorização: <em>Revisar permissões → sua conta → Avançado → Acessar Amigo Secreto (não seguro) → Permitir</em>.
+            <small>É “não verificado” porque o script é seu, não de uma empresa. Ele só pede permissão para enviar e-mails em seu nome.</small></li>
+          <li>No <strong>Registro de execução</strong> aparecerá <code>Seu token: …</code>. Copie esse código.</li>
+          <li><strong>Implantar → Nova implantação →</strong> engrenagem → <strong>App da Web</strong>.
+            Executar como: <strong>Eu</strong>. Quem pode acessar: <strong>Qualquer pessoa</strong>. Clique em <strong>Implantar</strong> e copie a URL que termina em <code>/exec</code>.</li>
+          <li>Cole a URL e o token abaixo e clique em <strong>Testar conexão</strong>.</li>
+        </ol>
+        <p class="nota">Para trocar o token, rode <code>gerarToken</code> novamente. O token fica guardado nas propriedades do script, nunca no GitHub.</p>
+      </details>
+
+      <div class="grade-2">
+        <label>URL do App da Web
+          <input type="url" id="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+        </label>
+        <label>Token
+          <span class="campo-senha">
+            <input type="password" id="token" placeholder="código gerado por gerarToken" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn-icone" id="ver-token" aria-label="Mostrar token">👁</button>
+          </span>
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" id="lembrar"> Lembrar o token neste dispositivo
+        <small>(desmarcado: esquece ao fechar a aba)</small></label>
+
+      <div class="linha-botoes">
+        <button type="button" class="btn" id="testar">Testar conexão</button>
+        <button type="button" class="btn btn-sec" id="email-teste" disabled>Enviar e-mail de teste para mim</button>
+        <button type="button" class="btn btn-sec" id="esquecer">Esquecer chaves</button>
+      </div>
+      <div id="status-conexao" class="aviso" role="status" aria-live="polite" hidden></div>
+
+      <div class="nav-etapa"><span></span><button type="button" class="btn" data-ir="2">Próximo: evento →</button></div>
+    </section>
+
+    <!-- 2. EVENTO ------------------------------------------------------- -->
+    <section class="etapa" data-etapa="2" aria-labelledby="t2" hidden>
+      <h2 id="t2">Sobre o evento</h2>
+      <p class="lead">Essas informações vão no e-mail de cada participante. Nenhuma delas afeta o sorteio.</p>
+      <div class="grade-2">
+        <label>Nome do evento <input id="ev-nome" maxlength="80" placeholder="Amigo Secreto da Família"></label>
+        <label>Data e hora da festa <input id="ev-dataFesta" maxlength="80" placeholder="24/12 às 20h"></label>
+        <label>Local <input id="ev-local" maxlength="120" placeholder="Casa da vovó"></label>
+        <label>Valor sugerido do presente <input id="ev-valor" maxlength="40" placeholder="R$ 100"></label>
+        <label>Organização <input id="ev-organizador" maxlength="80" placeholder="Seu nome"></label>
+      </div>
+      <label>Recado para todos <textarea id="ev-mensagem" rows="3" maxlength="1000" placeholder="Levem um prato de sobremesa!"></textarea></label>
+      <div class="nav-etapa"><button type="button" class="btn btn-sec" data-ir="1">← Voltar</button><button type="button" class="btn" data-ir="3">Próximo: participantes →</button></div>
+    </section>
+
+    <!-- 3. PARTICIPANTES ------------------------------------------------ -->
+    <section class="etapa" data-etapa="3" aria-labelledby="t3" hidden>
+      <h2 id="t3">Participantes</h2>
+      <p class="lead">Importe uma planilha (CSV) ou adicione um a um. O <strong>grupo familiar</strong> é opcional: use o mesmo nome para quem mora junto, por exemplo.</p>
+
+      <div class="importar" id="soltar">
+        <p><strong>Arraste um arquivo CSV aqui</strong> ou</p>
+        <div class="linha-botoes">
+          <label class="btn">Escolher arquivo<input type="file" id="arquivo" accept=".csv,.txt,text/csv" hidden></label>
+          <a class="btn btn-sec" href="modelo_participantes.csv" download>Baixar modelo</a>
+        </div>
+        <small>Colunas: <code>nome</code>, <code>email</code>, <code>grupo</code> — separadas por vírgula ou ponto e vírgula (Excel: “Salvar como CSV UTF-8”).</small>
+      </div>
+
+      <form id="form-pessoa" class="form-pessoa" autocomplete="off">
+        <input id="p-nome" placeholder="Nome" aria-label="Nome" required maxlength="80">
+        <input id="p-email" type="email" placeholder="e-mail" aria-label="E-mail" required maxlength="120">
+        <input id="p-grupo" placeholder="Grupo (opcional)" aria-label="Grupo familiar" list="grupos" maxlength="60">
+        <datalist id="grupos"></datalist>
+        <button class="btn" type="submit">Adicionar</button>
+      </form>
+      <div id="status-lista" class="aviso" role="status" aria-live="polite" hidden></div>
+
+      <div class="tabela-wrap">
+        <table class="tabela" id="tabela">
+          <thead><tr><th>#</th><th>Nome</th><th>E-mail</th><th>Grupo</th><th><span class="sr">Ações</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="vazio" id="vazio">Ninguém cadastrado ainda.</p>
+      </div>
+      <div class="linha-botoes fim">
+        <span id="contagem" class="contagem"></span>
+        <button type="button" class="btn btn-sec btn-perigo" id="limpar-lista">Limpar lista</button>
+      </div>
+      <div class="nav-etapa"><button type="button" class="btn btn-sec" data-ir="2">← Voltar</button><button type="button" class="btn" data-ir="4">Próximo: regras →</button></div>
+    </section>
+
+    <!-- 4. REGRAS ------------------------------------------------------- -->
+    <section class="etapa" data-etapa="4" aria-labelledby="t4" hidden>
+      <h2 id="t4">Regras do sorteio</h2>
+      <div class="regras">
+        <label class="chave"><input type="checkbox" id="r-grupo" checked>
+          <span class="trilho" aria-hidden="true"></span>
+          <span><strong>Ninguém tira alguém do próprio grupo familiar</strong><small>Quem é do mesmo grupo nunca se tira.</small></span></label>
+        <label class="chave"><input type="checkbox" id="r-auto" checked>
+          <span class="trilho" aria-hidden="true"></span>
+          <span><strong>Ninguém tira a si mesmo</strong><small id="r-auto-dica">Já garantido pela regra de grupo acima.</small></span></label>
+        <label class="chave"><input type="checkbox" id="r-corrente">
+          <span class="trilho" aria-hidden="true"></span>
+          <span><strong>Corrente única</strong><small>Forma uma roda só (A→B→C→…→A). Ótimo para a entrega dos presentes em sequência.</small></span></label>
+      </div>
+      <div id="viabilidade" class="viabilidade" role="status" aria-live="polite"></div>
+      <div id="grupos-resumo" class="grupos-resumo"></div>
+      <div class="nav-etapa"><button type="button" class="btn btn-sec" data-ir="3">← Voltar</button><button type="button" class="btn" data-ir="5">Próximo: sortear →</button></div>
+    </section>
+
+    <!-- 5. SORTEAR ------------------------------------------------------ -->
+    <section class="etapa" data-etapa="5" aria-labelledby="t5" hidden>
+      <h2 id="t5">Revisar e sortear</h2>
+      <div id="resumo" class="resumo"></div>
+      <label class="check"><input type="checkbox" id="confirmo"> Conferi os nomes e e-mails. Cada pessoa receberá um único e-mail.</label>
+      <div class="linha-botoes">
+        <button type="button" class="btn btn-grande" id="sortear" disabled>🎲 Sortear e enviar e-mails</button>
+      </div>
+      <div id="status-sorteio" class="aviso" role="status" aria-live="polite" hidden></div>
+      <div class="nav-etapa"><button type="button" class="btn btn-sec" data-ir="4">← Voltar</button><span></span></div>
+    </section>
+
+    <section class="etapa sucesso" data-etapa="6" hidden aria-labelledby="t6">
+      <img src="assets/dragao.png" alt="" width="120" height="120">
+      <h2 id="t6">Sorteio feito! 🎉</h2>
+      <p id="msg-sucesso" class="lead"></p>
+      <p>Nem você sabe quem tirou quem. Peça para todos olharem a caixa de entrada (e o spam).</p>
+      <div class="linha-botoes centro"><button type="button" class="btn btn-sec" data-ir="1">Novo sorteio</button></div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <img src="assets/logo-completo.png" alt="Mestre dos Dados" height="56">
+    <p>Código aberto · <a href="https://github.com/serrajordia/amigo_secreto">GitHub</a> · Seus dados ficam no seu navegador e na sua conta Google.</p>
+  </footer>
+
+  <script src="js/sorteio.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

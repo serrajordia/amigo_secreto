@@ -1,0 +1,5 @@
+python-dotenv>=1.0
+# opcional, para guardar a senha no cofre do Windows/macOS:
+# keyring>=25
+# para rodar os testes:
+# pytest>=8
