@@ -143,3 +143,12 @@ def test_credenciais_nao_vazam_no_repr():
     from amigo_secreto.config import Credenciais
 
     assert "segredo" not in repr(Credenciais("a@ex.com", "segredo"))
+
+
+def test_email_opcional_mas_validado_quando_presente():
+    ps = [Participante("a", ""), Participante("b", ""), Participante("c", "")]
+    assert not verificar(ps, Regras()).viavel
+    assert verificar(ps, Regras(), exigir_email=False).viavel
+    assert len(sortear(ps, exigir_email=False)) == 3
+    ruins = [Participante("a", "xx"), Participante("b", ""), Participante("c", "")]
+    assert not verificar(ruins, Regras(), exigir_email=False).viavel

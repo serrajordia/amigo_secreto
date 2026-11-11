@@ -5,18 +5,41 @@ Sorteio de amigo secreto **gratuito**, sem cadastro em site nenhum, com regras d
 - 🌐 **Interface web:** https://serrajordia.github.io/amigo_secreto/ (passo a passo para o organizador)
 - 🐍 **Python / notebook:** para quem prefere rodar localmente
 
-## Como usar (interface web)
+## Como usar (interface web): dois modos
 
-1. **Conectar** – a página ensina a copiar um pequeno script para o seu Google Apps Script (5 min, só na primeira vez). Ele envia os e-mails pelo seu Gmail; não existe senha nenhuma neste site.
-2. **Evento** – nome, data da festa, local, valor sugerido e recado (vão no e-mail; não afetam o sorteio).
-3. **Participantes** – importe um CSV (`nome;email;grupo`, [modelo](docs/modelo_participantes.csv)) ou adicione um a um. Dá para editar clicando na tabela.
-4. **Regras** – chaves liga/desliga:
-   - *Ninguém tira alguém do próprio grupo familiar*
-   - *Ninguém tira a si mesmo*
-   - *Corrente única* (A→B→C→…→A)
+A página abre perguntando **como enviar o resultado**. O sorteio e as regras são idênticos; muda só a forma de cada pessoa descobrir quem tirou.
 
-   A página avisa na hora se as regras tornam o sorteio impossível (ex.: um grupo com mais da metade das pessoas).
-5. **Sortear** – o sorteio acontece **no script do Google**, não no navegador: nem o organizador vê o resultado.
+| | ⚡ Rápido: links | ✉️ Por e-mail: planilha Google |
+|---|---|---|
+| Configuração | **Nenhuma** | Fazer uma cópia da planilha modelo (1 min) + autorizar o Google uma vez |
+| Como o resultado chega | Um **link secreto por pessoa** (botões de WhatsApp, e-mail, copiar, compartilhar) | **E-mail** pelo seu Gmail, automático |
+| E-mail dos participantes | Opcional | Obrigatório |
+| Onde funciona | Qualquer navegador, inclusive celular | Computador (o menu de script não aparece no app do celular) |
+| Sigilo do organizador | Vê só a lista de nomes; o resultado só existe dentro dos links. Se abrir/decodificar o link de alguém, vê o resultado dele | O sorteio roda no Google e **nada é gravado**: nem o organizador vê |
+| Esforço no envio | Um toque por pessoa | Um clique para todos |
+| Custo | R$ 0 | R$ 0 (até ~100 e-mails/dia) |
+
+### ⚡ Modo rápido
+1. **Evento:** nome, data da festa, local, valor sugerido e recado (aparecem para cada pessoa).
+2. **Participantes:** importe um CSV (`nome;email;grupo`, [modelo](docs/modelo_participantes.csv); só `nome` é obrigatório) ou adicione um a um. Dá para editar clicando na tabela.
+3. **Regras:** chaves liga/desliga (*ninguém tira alguém do próprio grupo*, *ninguém tira a si mesmo*, *corrente única*), com aviso na hora se o sorteio for impossível.
+4. **Sortear:** gera um link por pessoa. O resultado de cada um vai **dentro do endereço, depois do `#`**, parte que nem o GitHub Pages recebe. Não existe banco de dados.
+5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links só existem na aba aberta; **não feche a página** antes de enviar todos. Quem recebe abre o link, toca em **Revelar** e vê quem tirou, com data, local e valor.
+
+> ⚠️ O link é *codificação*, não criptografia: quem tiver o link lê o resultado daquela pessoa. Mande cada link só ao dono, individualmente, nunca em grupo.
+
+### ✉️ Modo e-mail (planilha Google)
+1. Abra o link da planilha modelo e clique em **Fazer uma cópia** (a cópia, com o script dentro, vai para o seu Drive).
+2. Preencha as abas **Participantes** e **Evento e regras**.
+3. Menu **🎁 Amigo Secreto**: *Verificar* → *Enviar e-mail de teste para mim* → *Sortear e enviar e-mails*.
+4. Na primeira vez o Google mostra "app não verificado" (é o seu próprio script): *Avançado → Acessar → Permitir*. O script só pode enviar e-mail e acessar aquela planilha (`@OnlyCurrentDoc`).
+
+#### Criar o modelo (só o dono do projeto, uma vez)
+1. Crie uma planilha em <https://sheets.new> e dê o nome "Amigo Secreto — modelo".
+2. **Extensões → Apps Script**: cole [Planilha.gs](docs/apps-script/Planilha.gs) em `Código.gs` e crie um segundo arquivo `Sorteio.gs` com o conteúdo de [Sorteio.gs](docs/apps-script/Sorteio.gs). Salve.
+3. Recarregue a planilha e use **🎁 Amigo Secreto → 1. Preparar planilha** (cria as abas). Rode *Verificar* e *Teste* para autorizar.
+4. Compartilhe como **"Qualquer pessoa com o link: Leitor"**, copie o endereço e troque o final `/edit…` por `/copy`.
+5. Cole esse endereço em `planilhaModeloUrl` em [docs/js/config.js](docs/js/config.js) e publique. Até lá, a página mostra o passo a passo "Monte você mesmo".
 
 ## Como usar (Python)
 
@@ -38,21 +61,22 @@ Ou abra o [notebook](Amigo%20Secreto.ipynb).
 | `.env` (Python) | `GMAIL_USER` / `GMAIL_APP_PASSWORD`, lido com `python-dotenv` | **Não** (`.gitignore`) |
 | Cofre do Windows/macOS | `python -m amigo_secreto configurar` (pacote `keyring`) | Não |
 | Variáveis de ambiente | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Não |
-| Interface web | URL do App da Web + token, guardados só no seu navegador (sessão, ou "lembrar" no dispositivo) | Não |
-| Apps Script | Token nas *Propriedades do script* (`gerarToken`) | Não |
+| Interface web | **Nenhuma chave.** Os dados ficam no navegador; os links ficam só na aba (sessionStorage) | Não |
+| Planilha Google | Nenhuma chave: o Google autoriza o script uma vez | Não |
 
-Para trocar o token da web, rode `gerarToken` de novo no Apps Script. Para trocar a senha de app, revogue-a em <https://myaccount.google.com/apppasswords>.
+Para trocar a senha de app, revogue-a em <https://myaccount.google.com/apppasswords>.
 
 ## Estrutura
 
 ```
 amigo_secreto/          pacote Python: sorteio.py (algoritmo), envio.py (Gmail), config.py (credenciais), cli.py
 docs/                   GitHub Pages: index.html, css/marca.css, js/app.js, js/sorteio.js
-docs/apps-script/       backend gratuito: Code.gs + Sorteio.gs (cópia idêntica de docs/js/sorteio.js)
-tests/                  pytest (Python) e node --test (JavaScript)
+docs/ver.html          página de revelação do modo rápido (js/ver.js, js/link.js)
+docs/apps-script/       modo e-mail: Planilha.gs + Sorteio.gs (cópia idêntica de docs/js/sorteio.js)
+tests/                  pytest (Python) e node --test (JavaScript, inclui o script da planilha com Google simulado)
 ```
 
-Testes: `python -m pytest` e `node --test tests/sorteio.test.js`.
+Testes: `python -m pytest` e `node --test tests/*.test.js`.
 Ao alterar `docs/js/sorteio.js`, copie para `docs/apps-script/Sorteio.gs` (um teste garante que estão iguais).
 
 ## O que mudou em relação à versão de 2021
@@ -95,7 +119,8 @@ Na inscrição, o navegador do participante gera um par de chaves (WebCrypto) pr
 
 ## Privacidade
 
-- Os dados dos participantes ficam no navegador do organizador (localStorage, com botão para limpar) e passam apenas pela conta Google dele no momento do envio.
-- Nada do resultado é gravado: nem em log, nem em planilha.
+- Os dados dos participantes ficam no navegador do organizador (localStorage, com botão para limpar). No modo e-mail passam apenas pela conta Google dele.
+- Modo e-mail: nada do resultado é gravado, nem em log nem em planilha.
+- Modo rápido: o resultado existe só dentro dos links (parte `#`, que não vai a servidor algum) e na aba do organizador até ele fechá-la.
 
 Contribuições são bem-vindas!

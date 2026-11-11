@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Seu amigo secreto · Mestre dos Dados</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/marca.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-conteudo">
+      <img src="assets/dragao.png" alt="" class="logo" width="64" height="64">
+      <div>
+        <h1 id="titulo-evento">Amigo Secreto</h1>
+        <p class="assinatura">by <strong>Mestre dos Dados</strong></p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="etapa revelar" id="cartao" hidden>
+      <p class="lead" id="ola"></p>
+      <div id="escondido">
+        <p>Quando ninguém estiver olhando, toque no botão para ver quem você tirou.</p>
+        <button type="button" class="btn btn-grande" id="revelar">🎁 Revelar meu amigo secreto</button>
+      </div>
+      <div id="visivel" hidden>
+        <p class="lead">Você tirou…</p>
+        <p class="nome-tirado" id="tirou"></p>
+        <dl class="detalhes" id="detalhes"></dl>
+        <p id="recado" class="recado"></p>
+        <p class="segredo">Guarde segredo! 🤫</p>
+        <button type="button" class="btn btn-sec" id="esconder">Esconder de novo</button>
+      </div>
+    </section>
+
+    <section class="etapa" id="erro" hidden>
+      <h2>Link incompleto</h2>
+      <p class="lead">Não consegui ler o resultado neste endereço. Peça para quem organizou o sorteio enviar o link de novo, copiado por inteiro.</p>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <img src="assets/logo-completo.png" alt="Mestre dos Dados" height="56">
+    <p>Este endereço guarda só o seu resultado e não passa por nenhum servidor.</p>
+  </footer>
+
+  <script src="js/link.js"></script>
+  <script src="js/ver.js"></script>
+</body>
+</html>

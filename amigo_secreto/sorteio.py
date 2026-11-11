@@ -86,7 +86,7 @@ def _tem_emparelhamento(viz: list[list[int]]) -> bool:
     return all(tenta(i, [False] * n) for i in range(n))
 
 
-def verificar(ps: Sequence[Participante], regras: Regras) -> Verificacao:
+def verificar(ps: Sequence[Participante], regras: Regras, exigir_email: bool = True) -> Verificacao:
     v = Verificacao(viavel=True)
     n = len(ps)
     if n < 2:
@@ -94,12 +94,15 @@ def verificar(ps: Sequence[Participante], regras: Regras) -> Verificacao:
     for k, p in enumerate(ps, 1):
         if not p.nome.strip():
             v.erros.append(f"Linha {k}: nome vazio.")
-        if not EMAIL_RE.match(p.email.strip()):
+        mail = p.email.strip()
+        if (exigir_email or mail) and not EMAIL_RE.match(mail):
             v.erros.append(f"Linha {k} ({p.nome or '?'}): e-mail inválido.")
 
     vistos: dict[str, str] = {}
     for p in ps:
         e = p.email.strip().casefold()
+        if not e:
+            continue
         if e in vistos:
             v.avisos.append(
                 f"{vistos[e]} e {p.nome} usam o mesmo e-mail — esse e-mail verá os dois resultados."
@@ -189,10 +192,12 @@ def _backtracking(ps, regras, rng) -> list[int] | None:
     return destino if atribui(0) else None
 
 
-def sortear(ps: Sequence[Participante], regras: Regras = Regras(), rng=None) -> list[int]:
+def sortear(
+    ps: Sequence[Participante], regras: Regras = Regras(), rng=None, exigir_email: bool = True
+) -> list[int]:
     """Devolve ``destino`` onde ``destino[i]`` é o índice de quem ``ps[i]`` tirou."""
     rng = rng or secrets.SystemRandom()
-    v = verificar(ps, regras)
+    v = verificar(ps, regras, exigir_email)
     if not v.viavel:
         raise SorteioImpossivel(" ".join(v.erros))
 

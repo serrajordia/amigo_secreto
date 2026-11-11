@@ -72,13 +72,16 @@ var Sorteio = (function () {
     return true;
   }
 
-  function verificar(ps, regras) {
+  /** opcoes.exigirEmail (padrão true): no modo "links" o e-mail é opcional (mas, se vier, tem de ser válido). */
+  function verificar(ps, regras, opcoes) {
     var r = normalizaRegras(regras), erros = [], avisos = [], n = ps.length, i;
+    var exigirEmail = !(opcoes && opcoes.exigirEmail === false);
     if (n < 2) erros.push('Cadastre pelo menos 2 participantes.');
     for (i = 0; i < n; i++) {
       var p = ps[i], nome = String(p.nome || '').trim();
       if (!nome) erros.push('Linha ' + (i + 1) + ': nome vazio.');
-      if (!EMAIL_RE.test(String(p.email || '').trim()))
+      var mail = String(p.email || '').trim();
+      if ((exigirEmail || mail) && !EMAIL_RE.test(mail))
         erros.push('Linha ' + (i + 1) + ' (' + (nome || '?') + '): e-mail inválido.');
     }
     var vistos = {};
@@ -160,10 +163,10 @@ var Sorteio = (function () {
   }
 
   /** Devolve destino[i] = índice de quem ps[i] tirou. Lança Error se impossível. */
-  function sortear(ps, regras, rnd) {
+  function sortear(ps, regras, rnd, opcoes) {
     var r = normalizaRegras(regras);
     rnd = rnd || aleatorio;
-    var v = verificar(ps, r);
+    var v = verificar(ps, r, opcoes);
     if (!v.viavel) throw new Error(v.erros.join(' '));
     var n = ps.length, base = [], i;
     for (i = 0; i < n; i++) base.push(i);

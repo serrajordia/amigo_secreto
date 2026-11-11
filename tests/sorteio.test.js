@@ -34,3 +34,12 @@ test('e-mail inválido e repetido', () => {
   const v = S.verificar([{ nome: 'a', email: 'x@ex.com' }, { nome: 'b', email: 'X@ex.com' }, { nome: 'c', email: 'c@ex.com' }], {});
   assert.ok(v.viavel && v.avisos.length === 1);
 });
+
+test('e-mail opcional com exigirEmail:false, mas validado se presente', () => {
+  const sem = ['a', 'b', 'c'].map((n) => ({ nome: n, email: '' }));
+  assert.strictEqual(S.verificar(sem, {}).viavel, false);
+  assert.strictEqual(S.verificar(sem, {}, { exigirEmail: false }).viavel, true);
+  assert.strictEqual(S.sortear(sem, {}, undefined, { exigirEmail: false }).length, 3);
+  const ruim = [{ nome: 'a', email: 'xx' }, { nome: 'b', email: '' }, { nome: 'c', email: '' }];
+  assert.strictEqual(S.verificar(ruim, {}, { exigirEmail: false }).viavel, false);
+});

@@ -1,25 +1,24 @@
-/* Interface do Amigo Secreto — assistente em 5 passos. Sem dependências. */
+/* Interface do Amigo Secreto. Dois modos: "rápido" (links individuais) e "e-mail" (planilha Google). Sem dependências. */
 (function () {
   'use strict';
 
-  var CHAVE_DADOS = 'amigoSecreto.v1';
-  var CHAVE_TOKEN = 'amigoSecreto.token';
+  var CHAVE_DADOS = 'amigoSecreto.v2';
+  var CHAVE_LINKS = 'amigoSecreto.links';
   var CHAVE_TEMA = 'amigoSecreto.tema';
   var CORES_GRUPO = ['#0071BC', '#29ABE2', '#3D4653', '#71798A', '#1B7F86', '#6D4DB0', '#B8561B', '#2E7D32', '#A0306E', '#4A5DC4'];
+  var OPCOES = { exigirEmail: false }; // no modo rápido o e-mail é opcional
 
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
 
   /* ------------------------------------------------------------ estado */
   var estado = {
-    url: '',
     evento: { nome: '', dataFesta: '', local: '', valor: '', organizador: '', mensagem: '' },
     participantes: [],
     regras: { grupo: true, auto: true, corrente: false },
-    etapa: 1
+    etapa: '0'
   };
-  var conexao = { ok: false, cota: null, remetente: '' };
-  var idPedido = null;
+  var links = []; // resultado do sorteio: só na aba (sessionStorage), nunca em localStorage
 
   function armazenamento(tipo) {
     try { var s = window[tipo]; s.setItem('__t', '1'); s.removeItem('__t'); return s; } catch (e) { return null; }
@@ -31,28 +30,19 @@
     try {
       var d = local && JSON.parse(local.getItem(CHAVE_DADOS) || 'null');
       if (d) {
-        estado.url = d.url || '';
         Object.assign(estado.evento, d.evento || {});
         estado.participantes = Array.isArray(d.participantes) ? d.participantes : [];
         Object.assign(estado.regras, d.regras || {});
-        estado.etapa = d.etapa || 1;
+        estado.etapa = String(d.etapa || '0');
       }
     } catch (e) { /* dados corrompidos: começa do zero */ }
+    try { links = (sessao && JSON.parse(sessao.getItem(CHAVE_LINKS) || '[]')) || []; } catch (e) { links = []; }
   }
   function salvar() {
     try { local && local.setItem(CHAVE_DADOS, JSON.stringify(estado)); } catch (e) { /* cheio/bloqueado */ }
   }
-  function lerToken() {
-    try { return (sessao && sessao.getItem(CHAVE_TOKEN)) || (local && local.getItem(CHAVE_TOKEN)) || ''; } catch (e) { return ''; }
-  }
-  function gravarToken(t, lembrar) {
-    try {
-      if (sessao) sessao.removeItem(CHAVE_TOKEN);
-      if (local) local.removeItem(CHAVE_TOKEN);
-      if (!t) return;
-      var alvo = lembrar ? local : sessao;
-      if (alvo) alvo.setItem(CHAVE_TOKEN, t);
-    } catch (e) { /* ignora */ }
+  function salvarLinks() {
+    try { sessao && sessao.setItem(CHAVE_LINKS, JSON.stringify(links)); } catch (e) { /* ignora */ }
   }
 
   /* --------------------------------------------------------- utilidades */
@@ -67,10 +57,6 @@
     });
   }
   function lista(itens) { return '<ul>' + itens.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul>'; }
-  function uuid() {
-    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    return Date.now().toString(36) + Math.random().toString(36).slice(2);
-  }
   function corGrupo(g) {
     var h = 0, s = String(g).trim().toLowerCase();
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -83,26 +69,34 @@
       correnteUnica: !!estado.regras.corrente
     };
   }
-  function mudouDados() { idPedido = null; salvar(); }
+  function verificar() { return Sorteio.verificar(estado.participantes, regrasSorteio(), OPCOES); }
+  function mudouDados() { salvar(); }
 
   /* --------------------------------------------------------- navegação */
   function irPara(n) {
-    n = Number(n);
+    n = String(n);
+    if (n === '5' && !links.length) n = '4';
     estado.etapa = n;
-    $$('.etapa').forEach(function (s) { s.hidden = Number(s.dataset.etapa) !== n; });
+    $$('.etapa').forEach(function (s) { s.hidden = s.dataset.etapa !== n; });
+    var passo = /^[1-5]$/.test(n) ? Number(n) : 0;
+    $('#nav-passos').hidden = !passo;
+    $('#trocar').hidden = n === '0';
     $$('#passos button').forEach(function (b) {
       var k = Number(b.dataset.ir);
-      if (k === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-      b.classList.toggle('feito', k < n);
+      if (k === passo) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      b.classList.toggle('feito', passo && k < passo);
     });
-    if (n === 4) atualizarViabilidade();
-    if (n === 5) atualizarResumo();
-    if (n <= 5) salvar();
+    if (n === '3') atualizarViabilidade();
+    if (n === '4') atualizarResumo();
+    if (n === '5') renderEnvios();
+    salvar();
     var titulo = $('.etapa[data-etapa="' + n + '"] h2');
     if (titulo) { titulo.setAttribute('tabindex', '-1'); titulo.focus({ preventScroll: true }); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   document.addEventListener('click', function (e) {
+    var m = e.target.closest('[data-modo]');
+    if (m) return irPara(m.dataset.modo === 'email' ? 'email' : '1');
     var b = e.target.closest('[data-ir]');
     if (b) irPara(b.dataset.ir);
   });
@@ -120,86 +114,24 @@
     try { local && local.setItem(CHAVE_TEMA, novo); } catch (e) { /* ignora */ }
   });
 
-  /* ------------------------------------------------- 1. conectar Gmail */
-  var URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[\w-]+\/(exec|dev)$/;
-
-  function urlValida() {
-    var u = $('#url').value.trim();
-    if (!u) return 'Cole a URL do App da Web.';
-    if (/\/dev$/.test(u)) return 'Essa é a URL de teste (/dev). Use a URL de implantação, que termina em /exec.';
-    if (!URL_RE.test(u)) return 'A URL deve ser parecida com https://script.google.com/macros/s/…/exec';
-    return '';
-  }
-
-  function chamar(acao, extra) {
-    var corpo = Object.assign({ acao: acao, token: $('#token').value.trim() }, extra || {});
-    // Corpo em texto puro = requisição "simples" (sem preflight CORS), aceita pelo Apps Script.
-    return fetch($('#url').value.trim(), { method: 'POST', body: JSON.stringify(corpo), redirect: 'follow' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .catch(function (e) {
-        if (e instanceof SyntaxError || /HTTP|fetch|network|Failed/i.test(String(e)))
-          throw new Error('Não consegui falar com o script. Confira se a URL termina em /exec e se a implantação está com acesso "Qualquer pessoa".');
-        throw e;
-      });
-  }
-
-  function marcarConexao(ok, info) {
-    conexao.ok = ok;
-    if (info) { conexao.cota = info.cota; conexao.remetente = info.remetente || ''; }
-    $('#email-teste').disabled = !ok;
-    atualizarBotaoSortear();
-  }
-
-  $('#testar').addEventListener('click', function () {
-    var st = $('#status-conexao'), erro = urlValida();
-    if (erro) return aviso(st, 'erro', esc(erro));
-    if (!$('#token').value.trim()) return aviso(st, 'erro', 'Cole o token gerado pela função <code>gerarToken</code>.');
-    estado.url = $('#url').value.trim();
-    gravarToken($('#token').value.trim(), $('#lembrar').checked);
-    salvar();
-    aviso(st, 'info', 'Testando…');
-    chamar('ping').then(function (r) {
-      if (!r.ok) { marcarConexao(false); return aviso(st, 'erro', esc(r.erro)); }
-      marcarConexao(true, r);
-      aviso(st, 'ok', '✓ Conectado' + (r.remetente ? ' como <strong>' + esc(r.remetente) + '</strong>' : '') +
-        '. Você ainda pode enviar <strong>' + esc(r.cota) + '</strong> e-mails hoje.');
-    }).catch(function (e) { marcarConexao(false); aviso(st, 'erro', esc(e.message)); });
-  });
-
-  $('#email-teste').addEventListener('click', function () {
-    var st = $('#status-conexao');
-    aviso(st, 'info', 'Enviando…');
-    chamar('teste', { logoUrl: urlLogo() }).then(function (r) {
-      if (!r.ok) return aviso(st, 'erro', esc(r.erro));
-      conexao.cota = r.cota;
-      aviso(st, 'ok', '✓ E-mail de teste enviado para <strong>' + esc(r.para) + '</strong>. Confira sua caixa de entrada.');
-    }).catch(function (e) { aviso(st, 'erro', esc(e.message)); });
-  });
-
-  $('#esquecer').addEventListener('click', function () {
-    $('#token').value = '';
-    $('#url').value = '';
-    estado.url = '';
-    gravarToken('');
-    salvar();
-    marcarConexao(false);
-    aviso($('#status-conexao'), 'info', 'URL e token apagados deste navegador.');
-  });
-
-  $('#ver-token').addEventListener('click', function () {
-    var t = $('#token');
-    t.type = t.type === 'password' ? 'text' : 'password';
-  });
-  $('#url').addEventListener('change', function () { estado.url = this.value.trim(); salvar(); marcarConexao(false); });
-  $('#token').addEventListener('change', function () { gravarToken(this.value.trim(), $('#lembrar').checked); marcarConexao(false); });
-  $('#lembrar').addEventListener('change', function () { gravarToken($('#token').value.trim(), this.checked); });
+  /* ------------------------------------------------ modo e-mail (guia) */
+  (function () {
+    var url = (window.AMIGO_CONFIG && window.AMIGO_CONFIG.planilhaModeloUrl) || '';
+    var a = $('#link-planilha');
+    if (/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[\w-]+\/copy/.test(url)) {
+      a.href = url;
+    } else {
+      a.removeAttribute('href');
+      a.classList.add('desativado');
+      a.setAttribute('aria-disabled', 'true');
+      $('#sem-modelo').hidden = false;
+      $('details.tutorial').open = true;
+    }
+  })();
 
   $('#copiar-script').addEventListener('click', function () {
     var btn = this;
-    Promise.all(['apps-script/Code.gs', 'apps-script/Sorteio.gs'].map(function (u) {
+    Promise.all(['apps-script/Planilha.gs', 'apps-script/Sorteio.gs'].map(function (u) {
       return fetch(u).then(function (r) { if (!r.ok) throw new Error(); return r.text(); });
     })).then(function (t) {
       var codigo = t[0] + '\n\n/* ======== Sorteio.gs (algoritmo) ======== */\n\n' + t[1];
@@ -212,18 +144,13 @@
     });
   });
 
-  function urlLogo() {
-    var u = new URL('assets/dragao.png', location.href).href;
-    return /^https:/.test(u) ? u : '';
-  }
-
-  /* -------------------------------------------------------- 2. evento */
+  /* -------------------------------------------------------- 1. evento */
   Object.keys(estado.evento).forEach(function (k) {
     var el = $('#ev-' + k);
     el.addEventListener('input', function () { estado.evento[k] = el.value; salvar(); });
   });
 
-  /* ------------------------------------------------- 3. participantes */
+  /* ------------------------------------------------- 2. participantes */
   function normaliza(s) {
     return String(s).trim().toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
   }
@@ -262,7 +189,7 @@
       cab.forEach(function (c, i) { if (nomes[k].indexOf(c) >= 0) idx[k] = i; });
     });
     var corpo = linhas.slice(1);
-    if (idx.nome === undefined || idx.email === undefined) { idx = { nome: 0, email: 1, grupo: 2 }; corpo = linhas; }
+    if (idx.nome === undefined) { idx = { nome: 0, email: 1, grupo: 2 }; corpo = linhas; } // sem cabeçalho
     return corpo.map(function (l) {
       var col = function (k) { return idx[k] !== undefined && l[idx[k]] !== undefined ? l[idx[k]].trim() : ''; };
       return { nome: col('nome'), email: col('email'), grupo: col('grupo') };
@@ -303,7 +230,8 @@
     e.preventDefault();
     var p = { nome: $('#p-nome').value.trim(), email: $('#p-email').value.trim(), grupo: $('#p-grupo').value.trim() };
     var st = $('#status-lista');
-    if (!Sorteio.EMAIL_RE.test(p.email)) return aviso(st, 'erro', 'E-mail inválido.');
+    if (!p.nome) return aviso(st, 'erro', 'Informe o nome.');
+    if (p.email && !Sorteio.EMAIL_RE.test(p.email)) return aviso(st, 'erro', 'E-mail inválido (ou deixe em branco).');
     var repetido = estado.participantes.some(function (q) {
       return normaliza(q.nome) === normaliza(p.nome) && q.email.toLowerCase() === p.email.toLowerCase();
     });
@@ -337,7 +265,7 @@
     if (alvo.contentEditable !== 'plaintext-only') alvo.contentEditable = 'true';
     alvo.setAttribute('aria-label', campo + ' de ' + (estado.participantes[i].nome || 'participante ' + (i + 1)));
     alvo.spellcheck = false;
-    if (campo === 'email' && !Sorteio.EMAIL_RE.test(valor)) td.classList.add('invalido');
+    if (campo === 'email' && valor && !Sorteio.EMAIL_RE.test(valor)) td.classList.add('invalido');
     alvo.addEventListener('focus', function () { if (comoChip && !estado.participantes[i].grupo) alvo.textContent = ''; });
     alvo.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); alvo.blur(); } });
     alvo.addEventListener('blur', function () {
@@ -386,7 +314,7 @@
     return g;
   }
 
-  /* ------------------------------------------------------- 4. regras */
+  /* ------------------------------------------------------- 3. regras */
   function sincronizarRegras() {
     $('#r-grupo').checked = estado.regras.grupo;
     $('#r-auto').checked = estado.regras.grupo || estado.regras.auto;
@@ -399,8 +327,6 @@
   $('#r-grupo').addEventListener('change', function () { estado.regras.grupo = this.checked; sincronizarRegras(); mudouDados(); atualizarViabilidade(); });
   $('#r-auto').addEventListener('change', function () { estado.regras.auto = this.checked; mudouDados(); atualizarViabilidade(); });
   $('#r-corrente').addEventListener('change', function () { estado.regras.corrente = this.checked; mudouDados(); atualizarViabilidade(); });
-
-  function verificar() { return Sorteio.verificar(estado.participantes, regrasSorteio()); }
 
   function atualizarViabilidade() {
     var v = verificar(), el = $('#viabilidade'), n = estado.participantes.length, grupos = gruposContagem();
@@ -435,7 +361,7 @@
     atualizarBotaoSortear();
   }
 
-  /* ------------------------------------------------------ 5. sortear */
+  /* ------------------------------------------------------ 4. sortear */
   function atualizarResumo() {
     var n = estado.participantes.length, grupos = Object.keys(gruposContagem()).length;
     var regras = [];
@@ -443,74 +369,141 @@
     else if (estado.regras.auto) regras.push('ninguém se tira');
     else regras.push('pode se tirar');
     if (estado.regras.corrente) regras.push('corrente única');
-    var cartoes = [
-      [n, 'participantes'],
-      [grupos, 'grupos familiares'],
-      [conexao.cota == null ? '?' : conexao.cota, 'e-mails disponíveis hoje'],
-      [regras.join(' · '), 'regras']
-    ];
+    var cartoes = [[n, 'participantes'], [grupos, 'grupos familiares'], [regras.join(' · '), 'regras']];
     $('#resumo').innerHTML = cartoes.map(function (c) {
       return '<div class="cartao"><b' + (String(c[0]).length > 6 ? ' style="font-size:1rem"' : '') + '>' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span></div>';
     }).join('');
 
-    var st = $('#status-sorteio'), v = verificar(), problemas = [];
-    if (!conexao.ok) problemas.push('Conecte o seu Gmail no passo 1 e clique em “Testar conexão”.');
-    if (!v.viavel) problemas = problemas.concat(v.erros);
-    if (conexao.ok && conexao.cota != null && conexao.cota < n) problemas.push('Sua cota diária de e-mails (' + conexao.cota + ') é menor que o número de participantes.');
-    if (problemas.length) aviso(st, 'alerta', 'Antes de sortear:' + lista(problemas));
+    var v = verificar(), st = $('#status-sorteio');
+    if (!v.viavel) aviso(st, 'alerta', 'Antes de sortear:' + lista(v.erros));
+    else if (v.avisos.length) aviso(st, 'alerta', lista(v.avisos));
     else aviso(st, '', '');
     atualizarBotaoSortear();
   }
 
   function atualizarBotaoSortear() {
-    var pronto = conexao.ok && $('#confirmo').checked && verificar().viavel;
-    $('#sortear').disabled = !pronto;
+    $('#sortear').disabled = !($('#confirmo').checked && verificar().viavel);
   }
   $('#confirmo').addEventListener('change', atualizarBotaoSortear);
 
+  function paginaDeRevelacao() {
+    var u = new URL('ver.html', location.href);
+    u.hash = ''; u.search = '';
+    return u.href;
+  }
+
   $('#sortear').addEventListener('click', function () {
-    var btn = this, st = $('#status-sorteio'), n = estado.participantes.length;
-    if (!confirm('Sortear agora e enviar ' + n + ' e-mails? Não dá para desfazer.')) return;
-    btn.disabled = true;
-    idPedido = idPedido || uuid();
-    aviso(st, 'info', '🎲 Sorteando e enviando ' + n + ' e-mails… isso pode levar até um minuto. Não feche a página.');
-    chamar('sortear', {
-      idPedido: idPedido,
-      participantes: estado.participantes,
-      regras: regrasSorteio(),
-      evento: Object.assign({}, estado.evento, { nome: estado.evento.nome.trim() || 'Amigo Secreto' }),
-      logoUrl: urlLogo()
-    }).then(function (r) {
-      if (r.cota != null) conexao.cota = r.cota;
-      if (!r.ok) {
-        btn.disabled = false;
-        if (!r.enviados) idPedido = null; // nada saiu: pode tentar de novo com um sorteio novo
-        return aviso(st, 'erro', esc(r.erro || 'Algo deu errado.'));
-      }
-      idPedido = null;
-      $('#confirmo').checked = false;
-      estado.etapa = 1; // ao reabrir a página, volta ao início (a lista continua salva)
-      salvar();
-      $('#msg-sucesso').textContent = r.enviados + ' e-mails enviados. Ainda restam ' + r.cota + ' e-mails na sua cota de hoje.';
-      irPara(6);
-    }).catch(function (e) {
-      btn.disabled = false;
-      aviso(st, 'erro', esc(e.message) + ' Se você tentar de novo, o mesmo pedido será reaproveitado (sem e-mails duplicados).');
+    var st = $('#status-sorteio'), ps = estado.participantes;
+    if (links.length && !confirm('Já existe um sorteio nesta aba. Sortear de novo invalida os links anteriores. Continuar?')) return;
+    var destino;
+    try {
+      destino = Sorteio.sortear(ps, regrasSorteio(), undefined, OPCOES);
+    } catch (e) {
+      return aviso(st, 'erro', esc(e.message));
+    }
+    var base = paginaDeRevelacao();
+    links = ps.map(function (p, i) {
+      return { nome: p.nome, email: p.email, enviado: false, url: Link.criar(base, p.nome, ps[destino[i]].nome, estado.evento) };
     });
+    destino = null; // o resultado só existe, daqui em diante, dentro dos links
+    salvarLinks();
+    $('#confirmo').checked = false;
+    irPara('5');
+  });
+
+  /* ------------------------------------------------- 5. enviar links */
+  function textoMensagem(l) {
+    var ev = estado.evento.nome.trim();
+    return 'Oi, ' + l.nome + '! 🎁 Seu amigo secreto' + (ev ? ' do ' + ev : '') +
+      ' já foi sorteado. Toque no link para revelar (só você deve abrir):\n' + l.url;
+  }
+
+  function marcarEnviado(i) {
+    if (!links[i].enviado) { links[i].enviado = true; salvarLinks(); atualizarProgresso(); marcarLinha(i); }
+  }
+  function marcarLinha(i) {
+    var li = $('#envios').children[i];
+    if (!li) return;
+    li.classList.toggle('enviado', links[i].enviado);
+    li.querySelector('input[type=checkbox]').checked = links[i].enviado;
+  }
+  function atualizarProgresso() {
+    var ok = links.filter(function (l) { return l.enviado; }).length;
+    $('#progresso').textContent = ok + ' de ' + links.length + ' enviados' + (ok === links.length ? ' — tudo pronto! 🎉' : '');
+  }
+
+  function botao(texto, classe) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn btn-sec btn-pequeno ' + (classe || ''); b.textContent = texto;
+    return b;
+  }
+  function ancora(texto, href) {
+    var a = document.createElement('a');
+    a.className = 'btn btn-sec btn-pequeno'; a.textContent = texto; a.href = href; a.target = '_blank'; a.rel = 'noopener';
+    return a;
+  }
+
+  function renderEnvios() {
+    var ul = $('#envios');
+    ul.innerHTML = '';
+    links.forEach(function (l, i) {
+      var li = document.createElement('li');
+      var nome = document.createElement('span'); nome.className = 'nome'; nome.textContent = l.nome;
+      var acoes = document.createElement('span'); acoes.className = 'acoes';
+
+      var wa = ancora('WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(textoMensagem(l)));
+      wa.addEventListener('click', function () { marcarEnviado(i); });
+      acoes.appendChild(wa);
+
+      if (l.email) {
+        var assunto = '🎁 ' + (estado.evento.nome.trim() || 'Amigo Secreto');
+        var em = ancora('E-mail', 'mailto:' + encodeURIComponent(l.email) + '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(textoMensagem(l)));
+        em.removeAttribute('target');
+        em.addEventListener('click', function () { marcarEnviado(i); });
+        acoes.appendChild(em);
+      }
+
+      var cp = botao('Copiar link');
+      cp.addEventListener('click', function () {
+        navigator.clipboard.writeText(l.url).then(function () {
+          cp.textContent = '✓ Copiado'; marcarEnviado(i);
+          setTimeout(function () { cp.textContent = 'Copiar link'; }, 2000);
+        }).catch(function () { cp.textContent = 'Não deu'; });
+      });
+      acoes.appendChild(cp);
+
+      if (navigator.share) {
+        var sh = botao('Compartilhar');
+        sh.addEventListener('click', function () {
+          navigator.share({ title: 'Amigo secreto', text: textoMensagem(l) }).then(function () { marcarEnviado(i); }).catch(function () { /* cancelado */ });
+        });
+        acoes.appendChild(sh);
+      }
+
+      var lab = document.createElement('label'); lab.className = 'marca-enviado';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = l.enviado;
+      cb.addEventListener('change', function () { links[i].enviado = cb.checked; salvarLinks(); atualizarProgresso(); marcarLinha(i); });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(' enviado'));
+
+      li.appendChild(nome); li.appendChild(acoes); li.appendChild(lab);
+      li.classList.toggle('enviado', l.enviado);
+      ul.appendChild(li);
+    });
+    atualizarProgresso();
+  }
+
+  $('#refazer').addEventListener('click', function () {
+    if (!confirm('Descartar este sorteio? Os links já enviados deixam de valer e você precisará sortear e enviar tudo de novo.')) return;
+    links = [];
+    salvarLinks();
+    irPara('4');
   });
 
   /* ------------------------------------------------------------ início */
   carregar();
   try { aplicarTema(local && local.getItem(CHAVE_TEMA)); } catch (e) { /* ignora */ }
-  $('#url').value = estado.url;
-  $('#token').value = lerToken();
-  try { $('#lembrar').checked = !!(local && local.getItem(CHAVE_TOKEN)); } catch (e) { /* ignora */ }
   Object.keys(estado.evento).forEach(function (k) { $('#ev-' + k).value = estado.evento[k] || ''; });
-  if (!estado.url) $('#tutorial').open = true;
-  if (estado.url && $('#token').value && !urlValida()) {
-    chamar('ping').then(function (r) { if (r.ok) marcarConexao(true, r); }).catch(function () { /* testa manualmente */ });
-  }
   sincronizarRegras();
   renderLista();
-  irPara(estado.etapa > 5 ? 1 : estado.etapa);
+  irPara(links.length ? '5' : (['0', 'email', '1', '2', '3', '4'].indexOf(estado.etapa) >= 0 ? estado.etapa : '0'));
 })();
