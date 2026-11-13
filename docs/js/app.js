@@ -176,7 +176,13 @@
       } else campo += c;
     }
     if (campo || linha.length) { linha.push(campo); linhas.push(linha); }
-    linhas = linhas.filter(function (l) { return l.some(function (c) { return c.trim(); }); });
+    return mapear(linhas);
+  }
+
+  // Converte linhas (matriz de células) em participantes; serve para CSV e Excel.
+  function mapear(linhas) {
+    linhas = linhas.map(function (l) { return l.map(function (c) { return c == null ? '' : String(c); }); })
+      .filter(function (l) { return l.some(function (c) { return c.trim(); }); });
     if (!linhas.length) return [];
 
     var nomes = {
@@ -196,13 +202,44 @@
     });
   }
 
+  // Excel: a biblioteca (SheetJS, hospedada aqui mesmo) só é carregada quando alguém envia .xlsx/.xls.
+  var carregandoXlsx = null;
+  function carregarXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!carregandoXlsx) carregandoXlsx = new Promise(function (ok, falha) {
+      var s = document.createElement('script');
+      s.src = 'js/vendor/xlsx.full.min.js';
+      s.onload = function () { ok(window.XLSX); };
+      s.onerror = function () { carregandoXlsx = null; falha(new Error('biblioteca')); };
+      document.head.appendChild(s);
+    });
+    return carregandoXlsx;
+  }
+
+  function linhasDeExcel(arq) {
+    return Promise.all([carregarXlsx(), arq.arrayBuffer()]).then(function (r) {
+      var m = new Uint8Array(r[1].slice(0, 4));
+      var zip = m[0] === 0x50 && m[1] === 0x4B, ole = m[0] === 0xD0 && m[1] === 0xCF; // .xlsx = zip, .xls = OLE
+      if (!zip && !ole) throw new Error('formato');
+      var wb = r[0].read(r[1], { type: 'array' });
+      // usa a primeira aba que tiver conteúdo
+      for (var i = 0; i < wb.SheetNames.length; i++) {
+        var linhas = r[0].utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]], { header: 1, raw: false, defval: '' });
+        if (linhas.some(function (l) { return l.some(function (c) { return String(c).trim(); }); })) return linhas;
+      }
+      return [];
+    });
+  }
+
   function importarArquivo(arq) {
     var st = $('#status-lista');
     if (!arq) return;
-    if (arq.size > 1024 * 1024) return aviso(st, 'erro', 'Arquivo grande demais (máx. 1 MB).');
-    if (/\.xlsx?$/i.test(arq.name)) return aviso(st, 'erro', 'Salve a planilha como <strong>CSV UTF-8</strong> (Arquivo → Salvar como) e importe de novo.');
-    arq.text().then(function (texto) {
-      var novos = parseCSV(texto);
+    if (arq.size > 5 * 1024 * 1024) return aviso(st, 'erro', 'Arquivo grande demais (máx. 5 MB).');
+    var excel = /\.xlsx?$/i.test(arq.name);
+    var lido = excel
+      ? linhasDeExcel(arq).then(mapear)
+      : arq.text().then(parseCSV);
+    lido.then(function (novos) {
       if (!novos.length) return aviso(st, 'erro', 'Não encontrei participantes nesse arquivo.');
       if (estado.participantes.length &&
         !confirm('Já existem ' + estado.participantes.length + ' participantes.\n\nOK = substituir a lista\nCancelar = adicionar ao final')) {
@@ -213,6 +250,10 @@
       mudouDados();
       renderLista();
       aviso(st, 'ok', '✓ ' + novos.length + ' participantes importados de <strong>' + esc(arq.name) + '</strong>. Confira abaixo (dá para editar clicando).');
+    }).catch(function () {
+      aviso(st, 'erro', excel
+        ? 'Não consegui ler essa planilha. Tente salvá-la de novo como .xlsx ou como CSV.'
+        : 'Não consegui ler esse arquivo.');
     });
   }
 

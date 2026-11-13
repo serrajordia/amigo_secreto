@@ -21,7 +21,7 @@ A página abre perguntando **como enviar o resultado**. O sorteio e as regras s�
 
 ### ⚡ Modo rápido
 1. **Evento:** nome, data da festa, local, valor sugerido e recado (aparecem para cada pessoa).
-2. **Participantes:** importe um CSV (`nome;email;grupo`, [modelo](docs/modelo_participantes.csv); só `nome` é obrigatório) ou adicione um a um. Dá para editar clicando na tabela.
+2. **Participantes:** importe uma planilha **Excel (.xlsx/.xls) ou CSV** (colunas `nome`, `email`, `grupo`; [modelo](docs/modelo_participantes.csv); só `nome` é obrigatório) ou adicione um a um. Dá para editar clicando na tabela.
 3. **Regras:** chaves liga/desliga (*ninguém tira alguém do próprio grupo*, *ninguém tira a si mesmo*, *corrente única*), com aviso na hora se o sorteio for impossível.
 4. **Sortear:** gera um link por pessoa. O resultado de cada um vai **dentro do endereço, depois do `#`**, parte que nem o GitHub Pages recebe. Não existe banco de dados.
 5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links só existem na aba aberta; **não feche a página** antes de enviar todos. Quem recebe abre o link, toca em **Revelar** e vê quem tirou, com data, local e valor.
@@ -122,5 +122,9 @@ Na inscrição, o navegador do participante gera um par de chaves (WebCrypto) pr
 - Os dados dos participantes ficam no navegador do organizador (localStorage, com botão para limpar). No modo e-mail passam apenas pela conta Google dele.
 - Modo e-mail: nada do resultado é gravado, nem em log nem em planilha.
 - Modo rápido: o resultado existe só dentro dos links (parte `#`, que não vai a servidor algum) e na aba do organizador até ele fechá-la.
+
+## Licenças de terceiros
+
+Para ler Excel, o site inclui a biblioteca [SheetJS](https://sheetjs.com) 0.20.3 (Apache-2.0) em `docs/js/vendor/`, hospedada aqui mesmo (nenhum arquivo vai a servidores externos) e carregada só quando alguém envia um .xlsx/.xls.
 
 Contribuições são bem-vindas!

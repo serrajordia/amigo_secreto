@@ -141,15 +141,15 @@
     <!-- 2. PARTICIPANTES ------------------------------------------------ -->
     <section class="etapa" data-etapa="2" aria-labelledby="t2" hidden>
       <h2 id="t2">Participantes</h2>
-      <p class="lead">Importe uma planilha (CSV) ou adicione um a um. O <strong>e-mail é opcional</strong> neste modo. O <strong>grupo familiar</strong> também: use o mesmo nome para quem mora junto, por exemplo.</p>
+      <p class="lead">Importe uma planilha (Excel ou CSV) ou adicione um a um. O <strong>e-mail é opcional</strong> neste modo. O <strong>grupo familiar</strong> também: use o mesmo nome para quem mora junto, por exemplo.</p>
 
       <div class="importar" id="soltar">
-        <p><strong>Arraste um arquivo CSV aqui</strong> ou</p>
+        <p><strong>Arraste uma planilha (Excel ou CSV) aqui</strong> ou</p>
         <div class="linha-botoes">
-          <label class="btn">Escolher arquivo<input type="file" id="arquivo" accept=".csv,.txt,text/csv" hidden></label>
+          <label class="btn">Escolher arquivo<input type="file" id="arquivo" accept=".xlsx,.xls,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden></label>
           <a class="btn btn-sec" href="modelo_participantes.csv" download>Baixar modelo</a>
         </div>
-        <small>Colunas: <code>nome</code>, <code>email</code> (opcional), <code>grupo</code> (opcional), separadas por vírgula ou ponto e vírgula (Excel: “Salvar como CSV UTF-8”).</small>
+        <small>Colunas: <code>nome</code>, <code>email</code> (opcional), <code>grupo</code> (opcional), em Excel (.xlsx, .xls) ou CSV. Só a primeira linha de cabeçalho e a primeira aba com dados são lidas.</small>
       </div>
 
       <form id="form-pessoa" class="form-pessoa" autocomplete="off">
