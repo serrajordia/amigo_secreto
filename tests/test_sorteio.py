@@ -152,3 +152,44 @@ def test_email_opcional_mas_validado_quando_presente():
     assert len(sortear(ps, exigir_email=False)) == 3
     ruins = [Participante("a", "xx"), Participante("b", ""), Participante("c", "")]
     assert not verificar(ruins, Regras(), exigir_email=False).viavel
+
+
+def lista(tamanhos):
+    return [Participante(f"g{g}p{k}", "", f"G{g}") for g, t in enumerate(tamanhos) for k in range(t)]
+
+
+def test_kuhn_concorda_com_forca_bruta():
+    from itertools import permutations
+
+    from amigo_secreto.sorteio import _emparelhar, _vizinhos
+
+    rng = random.Random(7)
+    for _ in range(300):
+        n = rng.randint(2, 6)
+        ps = [Participante(f"p{i}", "", rng.choice("ABC")) for i in range(n)]
+        regras = Regras()
+        viz = _vizinhos(ps, regras)
+        existe = any(all(pode_tirar(ps, i, j, regras) for i, j in enumerate(p)) for p in permutations(range(n)))
+        d = _emparelhar(viz, random.Random(rng.random()))
+        assert (d is not None) == existe
+        if d is not None:
+            checa(ps, d, regras)
+
+
+def test_fallback_kuhn_casos_apertados(monkeypatch):
+    import amigo_secreto.sorteio as s
+
+    monkeypatch.setattr(s, "TENTATIVAS_REJEICAO", 0)  # força o fallback
+    for tam in ([10, 10], [30, 30], [5, 5, 4], [1] * 12):
+        ps = lista(tam)
+        for sem in range(20):
+            checa(ps, sortear(ps, Regras(), random.Random(sem), exigir_email=False), Regras())
+
+
+def test_lista_grande_sem_estourar_recursao():
+    ps = lista([4] * 150)  # 600 pessoas
+    d = sortear(ps, Regras(), exigir_email=False)
+    checa(ps, d, Regras())
+    ps = lista([300, 300])  # só o fallback resolve; antes estourava a recursão
+    d = sortear(ps, Regras(), exigir_email=False)
+    checa(ps, d, Regras())

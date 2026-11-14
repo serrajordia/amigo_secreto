@@ -85,7 +85,7 @@ Ao alterar `docs/js/sorteio.js`, copie para `docs/apps-script/Sorteio.gs` (um te
 |---|---|
 | Senha de app escrita no notebook | `.env` / cofre do sistema / Apps Script sem senha |
 | Célula de teste usava variáveis inexistentes e `except:` genérico | `testar-email` com erro claro |
-| Sorteio "guloso" com `while` sem limite (podia travar para sempre) e bug que repetia o papelzinho anterior quando a urna esvaziava | Verificação prévia (emparelhamento) + amostragem por rejeição (todas as combinações válidas com a mesma chance) + backtracking como garantia |
+| Sorteio "guloso" com `while` sem limite (podia travar para sempre) e bug que repetia o papelzinho anterior quando a urna esvaziava | Verificação prévia (emparelhamento) + amostragem por rejeição (todas as combinações válidas com a mesma chance) + algoritmo de Kuhn embaralhado como rede de segurança nos casos apertados (sorteio sempre válido, em tempo previsível, aproximadamente uniforme; só a amostragem por rejeição é exatamente uniforme) |
 | `random` comum, resultado visível na saída do notebook | `secrets.SystemRandom` / `crypto.getRandomValues`; resultado nunca impresso |
 | E-mail em texto puro fixo | E-mail HTML com data, local, valor e recado |
 | Lista de participantes no código | CSV (vírgula ou ponto e vírgula, com ou sem cabeçalho) ou cadastro na interface |

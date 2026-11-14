@@ -43,3 +43,27 @@ test('e-mail opcional com exigirEmail:false, mas validado se presente', () => {
   const ruim = [{ nome: 'a', email: 'xx' }, { nome: 'b', email: '' }, { nome: 'c', email: '' }];
   assert.strictEqual(S.verificar(ruim, {}, { exigirEmail: false }).viavel, false);
 });
+
+function lista(tamanhos) {
+  const ps = [];
+  tamanhos.forEach((t, g) => { for (let k = 0; k < t; k++) ps.push({ nome: `g${g}p${k}`, email: '', grupo: 'G' + g }); });
+  return ps;
+}
+const OP = { exigirEmail: false };
+const R0 = { permitirAutossorteio: false, permitirMesmoGrupo: false, correnteUnica: false };
+
+test('casos apertados (só o fallback de Kuhn resolve) e listas grandes', () => {
+  for (const tam of [[10, 10], [30, 30], [5, 5, 4], [200, 200], new Array(150).fill(4)]) {
+    const ps = lista(tam);
+    for (let t = 0; t < 5; t++) {
+      const d = S.sortear(ps, R0, undefined, OP);
+      assert.deepStrictEqual([...d].sort((a, b) => a - b), ps.map((_, i) => i));
+      d.forEach((j, i) => assert.ok(S.podeTirar(ps, i, j, R0)));
+    }
+  }
+});
+
+test('impossível continua sendo detectado em lista grande', () => {
+  const v = S.verificar(lista([301, 299]), R0, OP);
+  assert.strictEqual(v.viavel, false);
+});

@@ -11,11 +11,16 @@ var Sorteio = (function () {
   var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   var TENTATIVAS_REJEICAO = 20000;
 
+  // Lê números aleatórios criptográficos em lotes (muito mais rápido que um getRandomValues por número).
+  var lote = null, usados = 0;
   function aleatorio() {
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      var b = new Uint32Array(1);
-      crypto.getRandomValues(b);
-      return b[0] / 4294967296;
+      if (!lote || usados >= lote.length) {
+        lote = lote || new Uint32Array(4096);
+        crypto.getRandomValues(lote);
+        usados = 0;
+      }
+      return lote[usados++] / 4294967296;
     }
     return Math.random(); // Apps Script (servidor)
   }
@@ -55,22 +60,50 @@ var Sorteio = (function () {
     return viz;
   }
 
-  function temEmparelhamento(viz) {
-    var n = viz.length, dono = [];
-    for (var k = 0; k < n; k++) dono.push(-1);
-    function tenta(i, visto) {
-      for (var a = 0; a < viz[i].length; a++) {
-        var j = viz[i][a];
-        if (!visto[j]) {
+  /**
+   * Algoritmo de Kuhn (iterativo, sem recursão): dá a cada pessoa um destino permitido.
+   * Devolve destino[i] ou null se não existe atribuição completa. Com `rnd`, embaralha a ordem das
+   * pessoas e das opções: sorteio válido e imprevisível (aproximadamente uniforme; só a
+   * amostragem por rejeição é exata).
+   */
+  function emparelhar(viz, rnd) {
+    var n = viz.length, i, k, a;
+    var v = viz.map(function (x) { return x.slice(); });
+    var ordem = [], dono = [];
+    for (i = 0; i < n; i++) { ordem.push(i); dono.push(-1); }
+    if (rnd) {
+      embaralha(ordem, rnd);
+      for (i = 0; i < n; i++) embaralha(v[i], rnd);
+    }
+    for (var o = 0; o < n; o++) {
+      var visto = [];
+      for (k = 0; k < n; k++) visto.push(false);
+      var pilha = [ordem[o]], pos = [0], escolhas = [], achou = false;
+      while (pilha.length) {
+        var topo = pilha.length - 1, pessoa = pilha[topo];
+        if (pos[topo] < v[pessoa].length) {
+          var j = v[pessoa][pos[topo]++];
+          if (visto[j]) continue;
           visto[j] = true;
-          if (dono[j] === -1 || tenta(dono[j], visto)) { dono[j] = i; return true; }
+          escolhas.push(j);
+          if (dono[j] === -1) { achou = true; break; }
+          pilha.push(dono[j]); // tenta fazer o atual dono de j trocar de destino
+          pos.push(0);
+        } else {
+          pilha.pop(); pos.pop();
+          if (escolhas.length) escolhas.pop();
         }
       }
-      return false;
+      if (!achou) return null;
+      for (a = 0; a < pilha.length; a++) dono[escolhas[a]] = pilha[a]; // aplica a cadeia de trocas
     }
-    for (var i = 0; i < n; i++) if (!tenta(i, [])) return false;
-    return true;
+    var destino = [];
+    for (i = 0; i < n; i++) destino.push(0);
+    for (var d = 0; d < n; d++) destino[dono[d]] = d;
+    return destino;
   }
+
+  function temEmparelhamento(viz) { return emparelhar(viz) !== null; }
 
   /** opcoes.exigirEmail (padrão true): no modo "links" o e-mail é opcional (mas, se vier, tem de ser válido). */
   function verificar(ps, regras, opcoes) {
@@ -124,42 +157,23 @@ var Sorteio = (function () {
     return d;
   }
 
+  /** Busca com retrocesso, usada só para "corrente única" (um único ciclo), que o Kuhn não garante. */
   function backtracking(ps, r, rnd) {
-    var n = ps.length, viz = vizinhos(ps, r), usado = [], destino = [], i;
-    for (i = 0; i < n; i++) { usado.push(false); destino.push(-1); }
-
-    if (r.correnteUnica) {
-      var ordem = [0];
-      usado[0] = true;
-      var anda = function (k) {
-        if (k === n) return podeTirar(ps, ordem[n - 1], ordem[0], r);
-        var op = embaralha(viz[ordem[k - 1]].filter(function (j) { return !usado[j]; }), rnd);
-        for (var a = 0; a < op.length; a++) {
-          usado[op[a]] = true; ordem.push(op[a]);
-          if (anda(k + 1)) return true;
-          ordem.pop(); usado[op[a]] = false;
-        }
-        return false;
-      };
-      return anda(1) ? deCorrente(ordem) : null;
-    }
-
-    var chave = viz.map(function (v, idx) { return { i: idx, n: v.length, r: rnd() }; });
-    chave.sort(function (a, b) { return a.n - b.n || a.r - b.r; });
-    var seq = chave.map(function (c) { return c.i; });
-    var atribui = function (k) {
-      if (k === n) return true;
-      var i2 = seq[k];
-      var op = embaralha(viz[i2].filter(function (j) { return !usado[j]; }), rnd);
+    var n = ps.length, viz = vizinhos(ps, r), usado = [], i;
+    for (i = 0; i < n; i++) usado.push(false);
+    var ordem = [0];
+    usado[0] = true;
+    var anda = function (k) {
+      if (k === n) return podeTirar(ps, ordem[n - 1], ordem[0], r);
+      var op = embaralha(viz[ordem[k - 1]].filter(function (j) { return !usado[j]; }), rnd);
       for (var a = 0; a < op.length; a++) {
-        usado[op[a]] = true; destino[i2] = op[a];
-        if (atribui(k + 1)) return true;
-        usado[op[a]] = false;
+        usado[op[a]] = true; ordem.push(op[a]);
+        if (anda(k + 1)) return true;
+        ordem.pop(); usado[op[a]] = false;
       }
-      destino[i2] = -1;
       return false;
     };
-    return atribui(0) ? destino : null;
+    return anda(1) ? deCorrente(ordem) : null;
   }
 
   /** Devolve destino[i] = índice de quem ps[i] tirou. Lança Error se impossível. */
@@ -175,7 +189,8 @@ var Sorteio = (function () {
       var destino = r.correnteUnica ? deCorrente(perm) : perm;
       if (valido(ps, destino, r)) return destino;
     }
-    var d = backtracking(ps, r, rnd);
+    // Rede de segurança (casos apertados, ex.: poucos grupos enormes): sorteio válido em tempo polinomial.
+    var d = r.correnteUnica ? backtracking(ps, r, rnd) : emparelhar(vizinhos(ps, r), rnd);
     if (!d) throw new Error('Com essas regras não existe sorteio possível.');
     return d;
   }

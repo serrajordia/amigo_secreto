@@ -69,21 +69,57 @@ def _vizinhos(ps, regras):
     return [[j for j in range(n) if pode_tirar(ps, i, j, regras)] for i in range(n)]
 
 
-def _tem_emparelhamento(viz: list[list[int]]) -> bool:
-    """Algoritmo de Kuhn: existe atribuição em que todos tiram alguém diferente?"""
+def _emparelhar(viz: list[list[int]], rng=None) -> list[int] | None:
+    """Algoritmo de Kuhn (iterativo, sem recursão): atribui a cada pessoa um destino permitido.
+
+    Devolve ``destino`` (``destino[i]`` = quem ``i`` tirou) ou ``None`` se não existe atribuição
+    completa. Com ``rng``, a ordem das pessoas e das opções é embaralhada, o que dá um sorteio
+    válido e imprevisível (aproximadamente uniforme; só a amostragem por rejeição é exata).
+    """
     n = len(viz)
-    dono = [-1] * n
-
-    def tenta(i, visto):
-        for j in viz[i]:
-            if not visto[j]:
+    viz = [list(v) for v in viz]
+    ordem = list(range(n))
+    if rng is not None:
+        rng.shuffle(ordem)
+        for v in viz:
+            rng.shuffle(v)
+    dono = [-1] * n  # dono[j] = quem tirou j
+    for inicio in ordem:
+        visto = [False] * n
+        pilha, pos, escolhas = [inicio], [0], []
+        achou = False
+        while pilha:
+            i, k = pilha[-1], len(pilha) - 1
+            if pos[k] < len(viz[i]):
+                j = viz[i][pos[k]]
+                pos[k] += 1
+                if visto[j]:
+                    continue
                 visto[j] = True
-                if dono[j] == -1 or tenta(dono[j], visto):
-                    dono[j] = i
-                    return True
-        return False
+                escolhas.append(j)
+                if dono[j] == -1:
+                    achou = True
+                    break
+                pilha.append(dono[j])  # tenta fazer o atual dono de j trocar de destino
+                pos.append(0)
+            else:
+                pilha.pop()
+                pos.pop()
+                if escolhas:
+                    escolhas.pop()
+        if not achou:
+            return None
+        for pessoa, j in zip(pilha, escolhas):  # aplica a cadeia de trocas
+            dono[j] = pessoa
+    destino = [0] * n
+    for j, i in enumerate(dono):
+        destino[i] = j
+    return destino
 
-    return all(tenta(i, [False] * n) for i in range(n))
+
+def _tem_emparelhamento(viz: list[list[int]]) -> bool:
+    """Existe atribuição em que todos tiram alguém permitido?"""
+    return _emparelhar(viz) is not None
 
 
 def verificar(ps: Sequence[Participante], regras: Regras, exigir_email: bool = True) -> Verificacao:
@@ -143,53 +179,36 @@ def _eh_corrente(destino) -> bool:
 
 
 def _backtracking(ps, regras, rng) -> list[int] | None:
+    """Busca com retrocesso, usada só para 'corrente única' (um único ciclo), que o Kuhn não garante."""
     n = len(ps)
     viz = _vizinhos(ps, regras)
-    destino = [-1] * n
     usado = [False] * n
+    usado[0] = True
+    ordem = [0]
 
-    if regras.corrente_unica:
-        ordem = [0]
-        usado[0] = True
-
-        def anda(k):
-            if k == n:
-                return pode_tirar(ps, ordem[-1], ordem[0], regras)
-            opcoes = [j for j in viz[ordem[-1]] if not usado[j]]
-            rng.shuffle(opcoes)
-            for j in opcoes:
-                usado[j] = True
-                ordem.append(j)
-                if anda(k + 1):
-                    return True
-                ordem.pop()
-                usado[j] = False
-            return False
-
-        if not anda(1):
-            return None
-        for a, b in zip(ordem, ordem[1:] + ordem[:1]):
-            destino[a] = b
-        return destino
-
-    ordem = sorted(range(n), key=lambda i: (len(viz[i]), rng.random()))
-
-    def atribui(k):
+    def anda(k):
         if k == n:
-            return True
-        i = ordem[k]
-        opcoes = [j for j in viz[i] if not usado[j]]
+            return pode_tirar(ps, ordem[-1], ordem[0], regras)
+        opcoes = [j for j in viz[ordem[-1]] if not usado[j]]
         rng.shuffle(opcoes)
         for j in opcoes:
             usado[j] = True
-            destino[i] = j
-            if atribui(k + 1):
+            ordem.append(j)
+            if anda(k + 1):
                 return True
+            ordem.pop()
             usado[j] = False
-        destino[i] = -1
         return False
 
-    return destino if atribui(0) else None
+    try:
+        if not anda(1):
+            return None
+    except RecursionError:
+        raise SorteioImpossivel("Lista grande demais para a regra 'corrente única' com estes grupos.")
+    destino = [-1] * n
+    for a, b in zip(ordem, ordem[1:] + ordem[:1]):
+        destino[a] = b
+    return destino
 
 
 def sortear(
@@ -215,7 +234,11 @@ def sortear(
         if _valido(ps, destino, regras):
             return destino
 
-    destino = _backtracking(ps, regras, rng)
+    # Rede de segurança (casos apertados, ex.: poucos grupos enormes): sorteio válido em tempo polinomial.
+    if regras.corrente_unica:
+        destino = _backtracking(ps, regras, rng)
+    else:
+        destino = _emparelhar(_vizinhos(ps, regras), rng)
     if destino is None:
         raise SorteioImpossivel("Com essas regras não existe sorteio possível.")
     return destino
