@@ -123,6 +123,12 @@ Na inscrição, o navegador do participante gera um par de chaves (WebCrypto) pr
 - Modo e-mail: nada do resultado é gravado, nem em log nem em planilha.
 - Modo rápido: o resultado existe só dentro dos links (parte `#`, que não vai a servidor algum) e na aba do organizador até ele fechá-la.
 
+## Contador de acessos (opcional)
+
+Para saber quanta gente usa o site, o projeto tem suporte ao [GoatCounter](https://www.goatcounter.com) (gratuito, sem cookies, sem dados pessoais). Crie uma conta, copie o endereço `https://SEU-CODIGO.goatcounter.com/count` para `goatcounterUrl` em [docs/js/config.js](docs/js/config.js) e publique. Enquanto estiver vazio, nenhum contador é carregado.
+
+São contadas as visitas e algumas ações pelo nome (`escolheu-modo-rapido`, `escolheu-modo-email`, `sorteio-rapido`, `abriu-planilha-modelo`), **nunca** nomes, e-mails ou resultados. A página de revelação (`ver.html`) **não** carrega o contador. O sorteio do modo e-mail roda no Google e não é contado.
+
 ## Licenças de terceiros
 
 Para ler Excel, o site inclui a biblioteca [SheetJS](https://sheetjs.com) 0.20.3 (Apache-2.0) em `docs/js/vendor/`, hospedada aqui mesmo (nenhum arquivo vai a servidores externos) e carregada só quando alguém envia um .xlsx/.xls.

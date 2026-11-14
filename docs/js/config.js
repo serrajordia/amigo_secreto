@@ -9,5 +9,7 @@
  * Deixe vazio enquanto não publicar: o site mostra o "Monte você mesmo".
  */
 window.AMIGO_CONFIG = {
-  planilhaModeloUrl: ''
+  planilhaModeloUrl: '',
+  // Contador de acessos (opcional). Ex.: 'https://mestredosdados.goatcounter.com/count'. Vazio = nenhum contador.
+  goatcounterUrl: ''
 };

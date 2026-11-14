@@ -94,8 +94,10 @@
     if (titulo) { titulo.setAttribute('tabindex', '-1'); titulo.focus({ preventScroll: true }); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  function contar(nome) { if (window.Contador) window.Contador.contar(nome); }
   document.addEventListener('click', function (e) {
     var m = e.target.closest('[data-modo]');
+    if (m) contar(m.dataset.modo === 'email' ? 'escolheu-modo-email' : 'escolheu-modo-rapido');
     if (m) return irPara(m.dataset.modo === 'email' ? 'email' : '1');
     var b = e.target.closest('[data-ir]');
     if (b) irPara(b.dataset.ir);
@@ -118,6 +120,7 @@
   (function () {
     var url = (window.AMIGO_CONFIG && window.AMIGO_CONFIG.planilhaModeloUrl) || '';
     var a = $('#link-planilha');
+    a.addEventListener('click', function () { contar('abriu-planilha-modelo'); });
     if (/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[\w-]+\/copy/.test(url)) {
       a.href = url;
     } else {
@@ -448,6 +451,7 @@
     });
     destino = null; // o resultado só existe, daqui em diante, dentro dos links
     salvarLinks();
+    contar('sorteio-rapido');
     $('#confirmo').checked = false;
     irPara('5');
   });
