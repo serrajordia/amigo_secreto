@@ -27,6 +27,20 @@
     });
   $('#recado').textContent = ev.mensagem;
 
+  /* convite da AMA: lembra (só neste navegador) quem já ativou, para não repetir */
+  function convite(ativou) { $('#convite').hidden = ativou; $('#convite-ok').hidden = !ativou; }
+  try { convite(localStorage.getItem('amigoSecreto.ativouNfp') === '1'); } catch (e) { /* ignora */ }
+  $('#ja-ativei').addEventListener('click', function () {
+    try { localStorage.setItem('amigoSecreto.ativouNfp', '1'); } catch (e) { /* ignora */ }
+    convite(true);
+  });
+  $('#copiar-cnpj').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText('52.802.295/0001-13').then(function () {
+      b.textContent = '✓ Copiado!';
+    }).catch(function () { b.textContent = '52.802.295/0001-13'; });
+  });
+
   $('#cartao').hidden = false;
   $('#revelar').addEventListener('click', function () {
     $('#escondido').hidden = true; $('#visivel').hidden = false;

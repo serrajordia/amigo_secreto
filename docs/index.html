@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Amigo Secreto · Mestre dos Dados</title>
-  <meta name="description" content="Sorteio de amigo secreto gratuito, com grupos familiares: envie o resultado por links no WhatsApp ou por e-mail pelo seu Gmail.">
-<meta property="og:type" content="website">  <meta property="og:title" content="Amigo Secreto grátis · Mestre dos Dados">  <meta property="og:description" content="Sorteio com grupos familiares e regras com um clique. Sem cadastro, sem servidor: resultado por link no WhatsApp ou por e-mail.">  <meta property="og:image" content="https://serrajordia.github.io/amigo_secreto/assets/og-imagem.png">  <meta property="og:url" content="https://serrajordia.github.io/amigo_secreto/">  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Sorteio de amigo secreto gratuito, com grupos familiares, em parceria com a AMA (Associação de Amigos do Autista). Em troca, peça a doação automática da Nota Fiscal Paulista para a AMA.">
+<meta property="og:type" content="website">  <meta property="og:title" content="Amigo Secreto grátis · Mestre dos Dados">  <meta property="og:description" content="Grátis, sem cadastro e sem propaganda, em parceria com a AMA. Em troca, ative a doação automática da Nota Fiscal Paulista para a AMA.">  <meta property="og:image" content="https://serrajordia.github.io/amigo_secreto/assets/og-imagem.png">  <meta property="og:url" content="https://serrajordia.github.io/amigo_secreto/">  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,7 @@
       </g>
     </svg>
     <div class="topo-conteudo">
-      <img src="assets/dragao.png" alt="" class="logo" width="64" height="64">
+      <img src="assets/dragao-128.png" alt="" class="logo" width="64" height="64">
       <div>
         <h1>Amigo Secreto</h1>
         <p class="assinatura">by <strong>Mestre dos Dados</strong></p>
@@ -35,6 +35,13 @@
       <button type="button" id="tema" class="btn-icone" aria-label="Alternar tema claro/escuro" title="Tema claro/escuro">◐</button>
     </div>
   </header>
+
+  <div class="faixa-parceria">
+    <a href="https://ama.org.br/" target="_blank" rel="noopener" class="faixa-logo" aria-label="AMA — Associação de Amigos do Autista (abre o site da AMA)">
+      <img src="assets/logo-ama.svg" alt="AMA — Associação de Amigos do Autista" width="38" height="52">
+    </a>
+    <p>Grátis, em <strong>parceria com a AMA</strong> — Associação de Amigos do Autista. <a href="#doe" class="link-doe" data-doe>Como ajudar a AMA sem gastar nada</a></p>
+  </div>
 
   <nav class="passos" id="nav-passos" aria-label="Etapas" hidden>
     <ol id="passos">
@@ -51,6 +58,33 @@
 
     <!-- 0. ESCOLHA DO MODO ---------------------------------------------- -->
     <section class="etapa" data-etapa="0" aria-labelledby="t0">
+      <a class="banner-nfp" href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener noreferrer">
+        <picture>
+          <source media="(max-width: 640px)" srcset="assets/banner-nfp-movel.jpg" width="800" height="377">
+          <img src="assets/banner-nfp.jpg" width="1200" height="400" alt="AMA — Associação de Amigos do Autista: doe sua Nota Fiscal Paulista e ajude a manter o atendimento da AMA. É gratuito para você e essencial para nós. ama.org.br/doacao-via-nota-fiscal">
+        </picture>
+      </a>
+      <aside class="doe" id="doe" aria-labelledby="t-doe">
+        <div class="doe-texto">
+          <h2 id="t-doe">Grátis. E com um pedido.</h2>
+          <p>O Amigo Secreto é de graça e vai continuar sendo. Em troca, peço um gesto que não custa nada: <strong>ative a doação automática da Nota Fiscal Paulista para a AMA</strong>, que atende, gratuitamente, pessoas com autismo e suas famílias em São Paulo.</p>
+          <p class="nota">Você não paga nada a mais: o crédito vem de parte do ICMS que o Estado devolve nas compras em que o seu CPF vai na nota.</p>
+          <details class="tutorial" id="doe-passos">
+            <summary>Como ativar (menos de 5 minutos)</summary>
+            <ol class="lista-passos">
+              <li>Entre no <strong>site ou aplicativo da Nota Fiscal Paulista</strong> (crie uma conta ou faça login).
+                <div class="linha-botoes"><a class="btn btn-sec btn-pequeno" href="https://www.nfp.fazenda.sp.gov.br/login.aspx" target="_blank" rel="noopener">Abrir a Nota Fiscal Paulista</a></div>
+              </li>
+              <li>No menu <strong>Entidades</strong>, escolha <em>Doação de cupons com CPF (automática)</em>.</li>
+              <li>Procure a <strong>AMA</strong> pelo CNPJ <code>52.802.295/0001-13</code> (no sistema ela também aparece como <em>Sítio Nova Esperança</em>) e confirme.
+                <div class="linha-botoes"><button type="button" class="btn btn-sec btn-pequeno" id="copiar-cnpj">Copiar CNPJ</button></div>
+              </li>
+              <li>Nas compras, <strong>continue pedindo o CPF na nota</strong> (o seu, não o da AMA): é ele que gera o crédito.</li>
+            </ol>
+            <p class="nota">Passo a passo da própria AMA: <a href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener">ama.org.br/doacao-via-nota-fiscal</a>. Para conhecer a AMA: <a href="https://ama.org.br/" target="_blank" rel="noopener">ama.org.br</a>.</p>
+          </details>
+        </div>
+      </aside>
       <h2 id="t0">Como você quer enviar o resultado?</h2>
       <p class="lead">O sorteio é igual nos dois modos (mesmas regras de grupo familiar). Muda só a forma de cada pessoa descobrir quem tirou.</p>
 
@@ -105,7 +139,7 @@
 
       <p class="nota">Limite de uns 100 e-mails por dia numa conta Gmail comum. O menu só aparece no computador (não no aplicativo do celular). O resultado não é gravado em lugar nenhum.</p>
 
-      <details class="tutorial">
+      <details class="tutorial" id="tutorial-email">
         <summary>Sem o modelo? Monte você mesmo (3 minutos)</summary>
         <ol class="lista-passos">
           <li>Crie uma planilha em <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a>.</li>
@@ -215,13 +249,16 @@
       </div>
       <p class="progresso" id="progresso"></p>
       <ul class="envios" id="envios"></ul>
+      <div class="aviso info doe-mini">
+        <strong>Gostou?</strong> Retribua sem gastar nada: ative a doação automática da Nota Fiscal Paulista para a <a href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener">AMA</a> (CNPJ 52.802.295/0001-13) e conte para quem organiza o amigo secreto da família ao lado.
+      </div>
       <div class="nav-etapa"><button type="button" class="btn btn-sec btn-perigo" id="refazer">Descartar e sortear de novo</button><span></span></div>
     </section>
   </main>
 
   <footer class="rodape">
     <img src="assets/logo-completo.png" alt="Mestre dos Dados" height="56">
-    <p>Código aberto · <a href="https://github.com/serrajordia/amigo_secreto">GitHub</a> · Seus dados ficam no seu navegador. Nada é enviado a servidores deste site. <span id="aviso-contador" hidden>Contamos visitas de forma anônima (GoatCounter, sem cookies e sem dados pessoais).</span></p>
+    <p>Em parceria com a <a href="https://ama.org.br/" target="_blank" rel="noopener">AMA — Associação de Amigos do Autista</a> · Código aberto · <a href="https://github.com/serrajordia/amigo_secreto">GitHub</a> · Seus dados ficam no seu navegador. Nada é enviado a servidores deste site. <span id="aviso-contador" hidden>Contamos visitas de forma anônima (GoatCounter, sem cookies e sem dados pessoais).</span></p>
   </footer>
 
   <script src="js/config.js"></script>

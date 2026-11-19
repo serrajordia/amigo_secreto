@@ -26,6 +26,25 @@
   <main>
     <section class="etapa revelar" id="cartao" hidden>
       <p class="lead" id="ola"></p>
+      <aside class="convite" id="convite" aria-labelledby="t-convite">
+        <a class="banner-nfp" href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener noreferrer">
+          <picture>
+            <source media="(max-width: 640px)" srcset="assets/banner-nfp-movel.jpg" width="800" height="377">
+            <img src="assets/banner-nfp.jpg" width="1200" height="400" alt="AMA — Associação de Amigos do Autista: doe sua Nota Fiscal Paulista e ajude a manter o atendimento da AMA. É gratuito para você e essencial para nós.">
+          </picture>
+        </a>
+        <h2 id="t-convite">Antes de revelar: um convite 💙</h2>
+        <p>Queremos convidar você a fazer uma <strong>enorme diferença com um mínimo de esforço</strong>: cadastre a doação automática da sua Nota Fiscal Paulista para a <strong>AMA</strong>, que atende gratuitamente pessoas com autismo e suas famílias. Em geral leva menos de 5 minutos&nbsp;;)</p>
+        <ol class="lista-passos">
+          <li>Entre no <strong>site ou app da Nota Fiscal Paulista</strong> (ou crie sua conta). <a href="https://www.nfp.fazenda.sp.gov.br/login.aspx" target="_blank" rel="noopener noreferrer">Abrir</a></li>
+          <li>Menu <strong>Entidades</strong> → <em>Doação de cupons com CPF (automática)</em>.</li>
+          <li>Procure a <strong>AMA</strong> pelo CNPJ <code>52.802.295/0001-13</code> e confirme. <button type="button" class="link" id="copiar-cnpj">Copiar CNPJ</button></li>
+          <li>Pronto! Nas compras, continue pedindo o <strong>CPF na nota</strong>.</li>
+        </ol>
+        <p class="nota">Não custa nada: o crédito vem de parte do ICMS que o Estado devolve. Vale para compras em São Paulo. <a href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener noreferrer">Instruções detalhadas</a></p>
+        <button type="button" class="btn btn-sec btn-pequeno" id="ja-ativei">Já ativei ✓</button>
+      </aside>
+      <p class="convite-ok" id="convite-ok" hidden>💙 Obrigado por ser doador(a) da AMA!</p>
       <div id="escondido">
         <p>Quando ninguém estiver olhando, toque no botão para ver quem você tirou.</p>
         <button type="button" class="btn btn-grande" id="revelar">🎁 Revelar meu amigo secreto</button>
@@ -36,6 +55,7 @@
         <dl class="detalhes" id="detalhes"></dl>
         <p id="recado" class="recado"></p>
         <p class="segredo">Guarde segredo! 🤫</p>
+        <p class="nota">💙 Ainda não ativou a doação da Nota Fiscal Paulista para a <a href="https://ama.org.br/doacao-via-nota-fiscal/" target="_blank" rel="noopener noreferrer">AMA</a>? Leva menos de 5 minutos e não custa nada.</p>
         <button type="button" class="btn btn-sec" id="esconder">Esconder de novo</button>
       </div>
     </section>

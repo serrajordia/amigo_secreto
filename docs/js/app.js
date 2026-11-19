@@ -77,6 +77,7 @@
     n = String(n);
     if (n === '5' && !links.length) n = '4';
     estado.etapa = n;
+    document.body.dataset.etapa = n;
     $$('.etapa').forEach(function (s) { s.hidden = s.dataset.etapa !== n; });
     var passo = /^[1-5]$/.test(n) ? Number(n) : 0;
     $('#nav-passos').hidden = !passo;
@@ -128,7 +129,7 @@
       a.classList.add('desativado');
       a.setAttribute('aria-disabled', 'true');
       $('#sem-modelo').hidden = false;
-      $('details.tutorial').open = true;
+      $('#tutorial-email').open = true;
     }
   })();
 
@@ -144,6 +145,25 @@
       setTimeout(function () { btn.textContent = 'Copiar código'; }, 2500);
     }).catch(function () {
       btn.textContent = 'Não deu — use os botões de baixar';
+    });
+  });
+
+  /* ----------------------------------------------- parceria AMA (NFP) */
+  $('#copiar-cnpj').addEventListener('click', function () {
+    var btn = this;
+    navigator.clipboard.writeText('52.802.295/0001-13').then(function () {
+      btn.textContent = '✓ Copiado!';
+      setTimeout(function () { btn.textContent = 'Copiar CNPJ'; }, 2500);
+    }).catch(function () { btn.textContent = 'CNPJ: 52.802.295/0001-13'; });
+  });
+  var bn = $('.banner-nfp'); if (bn) bn.addEventListener('click', function () { contar('clique-banner-nfp'); });
+  $$('[data-doe]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      irPara('0');
+      $('#doe-passos').open = true;
+      $('#doe').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      contar('clique-doe-ama');
     });
   });
 

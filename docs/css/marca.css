@@ -306,3 +306,55 @@ textarea { resize: vertical; }
 .detalhes dd { margin: 0; font-weight: 600; }
 .recado { white-space: pre-line; }
 .segredo { color: var(--texto-suave); }
+
+/* Parceria AMA ---------------------------------------------------------- */
+:root { --ama: #003598; }
+.faixa-parceria {
+  background: var(--superficie); border-bottom: 1px solid var(--borda);
+  display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 16px;
+}
+.faixa-parceria p { margin: 0; font-size: .88rem; line-height: 1.35; max-width: 640px; }
+.faixa-logo { flex: none; display: block; line-height: 0; border-radius: 8px; }
+.faixa-logo img { display: block; width: 38px; height: auto; }
+.link-doe { font-weight: 600; white-space: nowrap; }
+.doe {
+  display: flex; gap: 18px; align-items: flex-start;
+  background: var(--superficie-2); border-radius: 12px; padding: 18px; margin: 0 0 22px;
+  border-left: 5px solid var(--ama); scroll-margin-top: 70px;
+}
+.doe-logo { flex: none; width: 62px; height: auto; border-radius: 8px; }
+.doe-texto { min-width: 0; }
+.doe h2 { margin: 0 0 6px; font-size: 1.35rem; color: var(--texto); }
+.doe p { margin: 0 0 8px; }
+.doe .tutorial { background: var(--superficie); margin: 10px 0 0; }
+.doe-mini { margin-top: 18px; }
+@media (max-width: 560px) {
+  .faixa-parceria { padding: 8px 12px; gap: 10px; }
+  .faixa-parceria p { font-size: .82rem; }
+  .link-doe { white-space: normal; display: inline-block; }
+  .doe { flex-direction: column; gap: 10px; padding: 14px; }
+  .doe-logo { width: 46px; }
+  .topo-conteudo { padding: 16px 12px; gap: 10px; }
+  .logo { width: 52px; height: 52px; }
+  main { padding: 14px 12px 32px; }
+}
+.doe-ver { margin: 18px 0 0; } .doe-ver .doe-logo { width: 46px; } .doe-ver .linha-botoes { margin: 6px 0 0; }
+
+/* Banner NFP + convite na revelação */
+body[data-etapa="0"] .faixa-parceria { display: none; }
+.banner-nfp { display: block; line-height: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--borda); margin: 0 0 16px; }
+.banner-nfp img { display: block; width: 100%; height: auto; }
+.convite {
+  background: var(--superficie-2); border-radius: 12px; padding: 16px; margin: 0 0 22px;
+  border-left: 5px solid var(--ama);
+}
+.convite h2 { margin: 4px 0 8px; font-size: 1.3rem; color: var(--texto); }
+.convite p { margin: 0 0 8px; }
+.convite .lista-passos { margin: 8px 0; }
+.convite .lista-passos li { margin-bottom: 6px; }
+.convite-ok { color: var(--texto-suave); margin: 0 0 16px; }
+@media (max-width: 560px) { .convite { padding: 12px; } }
+.convite { text-align: left; }
+.convite h2 { font-size: 1.2rem; }
+.convite code { white-space: nowrap; font-size: .85rem; }
+.convite .lista-passos { padding-left: 20px; }
