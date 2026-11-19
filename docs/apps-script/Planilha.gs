@@ -221,7 +221,7 @@ function enviarResultado_(quem, tirou, ev) {
   var texto = ['Olá, ' + quem.nome + '!', '', 'No ' + ev.nome + ', você tirou:', '', '*** ' + tirou.nome + ' ***', '']
     .concat(linhas.map(function (l) { return l[0] + ': ' + l[1]; }))
     .concat(ev.mensagem ? ['', ev.mensagem] : [])
-    .concat(['', 'Guarde segredo! 🤫']).join('\n');
+    .concat(['', 'Guarde segredo! 🤫', '', '💙 Sorteio grátis, em parceria com a AMA. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista: https://ama.org.br/doacao-via-nota-fiscal/']).join('\n');
 
   var tabela = linhas.map(function (l) {
     return '<tr><td style="padding:4px 12px 4px 0;color:' + COR.cinza + '">' + esc_(l[0]) + '</td>' +
@@ -233,7 +233,8 @@ function enviarResultado_(quem, tirou, ev) {
     '<p style="margin:12px 0 20px;font-size:30px;font-weight:800;color:' + COR.azul + '">' + esc_(tirou.nome) + '</p>' +
     '<table style="border-collapse:collapse;font-size:14px">' + tabela + '</table>' +
     (ev.mensagem ? '<p style="margin:20px 0 0;color:' + COR.grafite + ';white-space:pre-line">' + esc_(ev.mensagem) + '</p>' : '') +
-    '<p style="margin:24px 0 0;color:' + COR.cinza + ';font-size:13px">Guarde segredo! 🤫</p>';
+    '<p style="margin:24px 0 0;color:' + COR.cinza + ';font-size:13px">Guarde segredo! 🤫</p>' +
+    '<p style="margin:20px 0 0;padding:12px;background:#eef4fb;border-radius:8px;font-size:13px;color:' + COR.grafite + '">💙 Este sorteio é grátis, em parceria com a <b>AMA – Associação de Amigos do Autista</b>. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista (leva menos de 5 minutos): <a href="https://ama.org.br/doacao-via-nota-fiscal/">ama.org.br/doacao-via-nota-fiscal</a></p>';
 
   MailApp.sendEmail({
     to: quem.email,

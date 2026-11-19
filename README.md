@@ -117,6 +117,12 @@ Na inscrição, o navegador do participante gera um par de chaves (WebCrypto) pr
 
 **Recomendação:** ficar no cenário A. Ele atende todas as funcionalidades desejadas com custo zero e sem servidor; migrar para C só se o projeto passar a atender muitas famílias ou precisar de remetente com domínio próprio.
 
+## Parceria com a AMA e a Nota Fiscal Paulista
+
+O Amigo Secreto é gratuito e continua sendo. Em parceria com a [AMA – Associação de Amigos do Autista](https://ama.org.br/), pede-se (como convite, nunca como condição) que quem usar ative a **doação automática da Nota Fiscal Paulista** para a AMA (CNPJ 52.802.295/0001-13). Não custa nada: o crédito vem de parte do ICMS que o Estado devolve a quem pede o CPF na nota. Passo a passo: <https://ama.org.br/doacao-via-nota-fiscal/>.
+
+Onde o convite aparece no produto: primeira tela (banner e passo a passo), mensagem enviada pelo WhatsApp (o organizador pode desmarcar), e-mail do modo planilha e página de revelação, antes do botão. Os textos estão no código (`docs/index.html`, `docs/ver.html`, `docs/js/app.js`, `docs/apps-script/Planilha.gs`); remova-os se fizer um fork sem a parceria.
+
 ## Privacidade
 
 - Os dados dos participantes ficam no navegador do organizador (localStorage, com botão para limpar). No modo e-mail passam apenas pela conta Google dele.

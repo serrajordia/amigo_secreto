@@ -358,3 +358,5 @@ body[data-etapa="0"] .faixa-parceria { display: none; }
 .convite h2 { font-size: 1.2rem; }
 .convite code { white-space: nowrap; font-size: .85rem; }
 .convite .lista-passos { padding-left: 20px; }
+.opcao-ama { display: block; font-size: .9rem; color: var(--texto-suave); margin: 4px 0 12px; }
+.opcao-ama input { margin-right: 6px; }

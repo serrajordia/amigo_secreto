@@ -480,7 +480,8 @@
   function textoMensagem(l) {
     var ev = estado.evento.nome.trim();
     return 'Oi, ' + l.nome + '! 🎁 Seu amigo secreto' + (ev ? ' do ' + ev : '') +
-      ' já foi sorteado. Toque no link para revelar (só você deve abrir):\n' + l.url;
+      ' já foi sorteado. Toque no link para revelar (só você deve abrir):\n' + l.url +
+      (($('#inclui-ama') || {}).checked ? '\n\n💙 Sorteio grátis, em parceria com a AMA. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista (menos de 5 min): https://ama.org.br/doacao-via-nota-fiscal/' : '');
   }
 
   function marcarEnviado(i) {
