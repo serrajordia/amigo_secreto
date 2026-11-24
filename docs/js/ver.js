@@ -26,11 +26,24 @@
       dl.appendChild(dt); dl.appendChild(dd);
     });
   $('#recado').textContent = ev.mensagem;
-  if (d.apelido) { $('#apelido').textContent = 'Sorteio #' + d.apelido; $('#apelido').hidden = false; }
+  if (d.apelido) {
+    $('#apelido').textContent = 'Sorteio #' + d.apelido + (d.data ? ' · feito em ' + d.data : '');
+    $('#apelido').hidden = false;
+  }
 
-  /* convite da AMA: lembra (só neste navegador) quem já ativou, para não repetir */
-  function convite(ativou) { $('#convite').hidden = ativou; $('#convite-ok').hidden = !ativou; }
-  try { convite(localStorage.getItem('amigoSecreto.ativouNfp') === '1'); } catch (e) { /* ignora */ }
+  /*
+   * Convite da AMA antes da revelação: o botão "Revelar" só libera depois de marcar "Estou ciente".
+   * Quem disse que já é doador(a) não vê o pedido de novo (lembrado só neste navegador).
+   */
+  function liberar(ok) { $('#revelar').disabled = !ok; $('#dica-revelar').hidden = ok; }
+  function convite(ativou) {
+    $('#convite').hidden = ativou; $('#convite-ok').hidden = !ativou;
+    liberar(ativou || $('#ciente').checked);
+  }
+  var jaAtivou = false;
+  try { jaAtivou = localStorage.getItem('amigoSecreto.ativouNfp') === '1'; } catch (e) { /* ignora */ }
+  convite(jaAtivou);
+  $('#ciente').addEventListener('change', function () { liberar(this.checked); });
   $('#ja-ativei').addEventListener('click', function () {
     try { localStorage.setItem('amigoSecreto.ativouNfp', '1'); } catch (e) { /* ignora */ }
     convite(true);

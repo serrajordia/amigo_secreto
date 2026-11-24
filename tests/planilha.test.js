@@ -133,7 +133,7 @@ test('código de recuperação: reenviar refaz o mesmo resultado só para a pess
   const a = ambiente({ participantes: FAMILIAS });
   a.ctx.menuSortear();
   const final = a.alertas.at(-1);
-  const codigo = final.msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}/)[0];
+  const codigo = final.msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}-\d{8}-\d{4}/)[0];
   const apelido = final.titulo.match(/#(\w{4})/)[1];
   const original = quemTirou(a.emails, FAMILIAS);
   assert.ok(a.emails.every((m) => m.body.includes('Sorteio #' + apelido)));
@@ -152,7 +152,7 @@ test('código de recuperação: reenviar refaz o mesmo resultado só para a pess
 test('reenviar recusa código errado ou lista alterada', () => {
   const a = ambiente({ participantes: FAMILIAS });
   a.ctx.menuSortear();
-  const codigo = a.alertas.at(-1).msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}/)[0];
+  const codigo = a.alertas.at(-1).msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}-\d{8}-\d{4}/)[0];
   const trocada = [FAMILIAS[1], FAMILIAS[0]].concat(FAMILIAS.slice(2));
   const b = ambiente({ participantes: trocada, respostas: [codigo, 'Ana'] });
   b.ctx.menuReenviar();

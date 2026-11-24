@@ -20,7 +20,7 @@
     etapa: '0'
   };
   var links = []; // resultado do sorteio: só na aba (sessionStorage), nunca em localStorage
-  var sorteio = { codigo: '', apelido: '', recuperado: false }; // idem
+  var sorteio = { codigo: '', apelido: '', data: '', recuperado: false }; // idem
 
   function armazenamento(tipo) {
     try { var s = window[tipo]; s.setItem('__t', '1'); s.removeItem('__t'); return s; } catch (e) { return null; }
@@ -501,20 +501,20 @@
   }
 
   function podeSubstituir() {
-    return !links.length || confirm('Já existe um sorteio nesta aba (#' + sorteio.apelido + '). Continuar gera links novos.\n\n' +
+    return !links.length || confirm('Já existe um sorteio nesta aba (#' + sorteio.apelido + (sorteio.data ? ', feito em ' + sorteio.data : '') + '). Continuar gera links novos.\n\n' +
       'Os links já enviados continuam abrindo, mas mostram o resultado antigo: avise o pessoal de qual sorteio vale ' +
       '(o "Sorteio #…" aparece no link de cada um).');
   }
 
   /** Transforma o resultado em links; depois disso o resultado só existe dentro deles. */
-  function gerarLinks(destino, codigo, apelido, recuperado) {
+  function gerarLinks(destino, codigo, apelido, data, recuperado) {
     var ps = estado.participantes, base = paginaDeRevelacao();
     links = ps.map(function (p, i) {
-      return { nome: p.nome, email: p.email, enviado: false, url: Link.criar(base, p.nome, ps[destino[i]].nome, estado.evento, apelido) };
+      return { nome: p.nome, email: p.email, enviado: false, url: Link.criar(base, p.nome, ps[destino[i]].nome, estado.evento, apelido, data) };
     });
     var org = organizador();
     sorteio = {
-      codigo: codigo || '', apelido: apelido, recuperado: !!recuperado,
+      codigo: codigo || '', apelido: apelido, data: data || '', recuperado: !!recuperado,
       // foto da lista e das regras usadas: a mensagem de recuperação não muda se a lista for editada depois
       lista: ps.map(function (p) { return { nome: p.nome, email: p.email || '', grupo: p.grupo || '' }; }),
       regras: descricaoRegras(),
@@ -527,14 +527,15 @@
   $('#sortear').addEventListener('click', function () {
     var st = $('#status-sorteio'), ps = estado.participantes, regras = regrasSorteio();
     if (!podeSubstituir()) return;
-    var codigo = '', apelido, rnd, destino;
+    var codigo = '', apelido, data, rnd, destino;
     try {
       if ($('#reprodutivel').checked) {
         codigo = Sorteio.novoCodigo(ps, regras);
         var c = Sorteio.lerCodigo(codigo, ps, regras);
-        rnd = c.rnd; apelido = c.apelido;
+        rnd = c.rnd; apelido = c.apelido; data = c.data;
       } else {
         apelido = Sorteio.apelidoAleatorio();
+        data = Sorteio.descreverData(Sorteio.carimbo());
       }
       destino = Sorteio.sortear(ps, regras, rnd, OPCOES);
     } catch (e) {
@@ -542,7 +543,7 @@
     }
     contar(codigo ? 'sorteio-rapido-reprodutivel' : 'sorteio-rapido');
     $('#confirmo').checked = false;
-    gerarLinks(destino, codigo, apelido, false);
+    gerarLinks(destino, codigo, apelido, data, false);
   });
 
   $('#rec-ir').addEventListener('click', function () {
@@ -557,7 +558,7 @@
     aviso(st, '', '');
     $('#rec-codigo').value = '';
     contar('sorteio-recuperado');
-    gerarLinks(destino, c.codigo, c.apelido, true);
+    gerarLinks(destino, c.codigo, c.apelido, c.data, true);
   });
 
   /* ------------------------------------------------- 5. enviar links */
@@ -601,7 +602,8 @@
       ? 'Se a aba fechar antes de você enviar todos, dá para recuperar os links com o código abaixo.'
       : 'Os links só existem nesta aba: <strong>não feche a página</strong> antes de enviar todos.';
     $('#apelido-sorteio').textContent = sorteio.apelido
-      ? 'Este é o sorteio #' + sorteio.apelido + ' (aparece no link de cada pessoa, para ninguém confundir com um sorteio anterior).' : '';
+      ? 'Este é o sorteio #' + sorteio.apelido + (sorteio.data ? ', feito em ' + sorteio.data : '') +
+        ' (aparece no link de cada pessoa, para ninguém confundir com um sorteio anterior).' : '';
     renderGuardar();
     aviso($('#status-envio'), 'ok', sorteio.recuperado
       ? '✓ Links recuperados: o resultado é o mesmo do sorteio original. Reenvie só para quem perdeu o link.' : '');
@@ -656,7 +658,7 @@
   function textoRecuperacao() {
     var ev = estado.evento.nome.trim(), lista = sorteio.lista || [];
     var site = location.origin + location.pathname;
-    return '🔐 Amigo secreto' + (ev ? ' "' + ev + '"' : '') + ' — sorteio #' + sorteio.apelido + '\n' +
+    return '🔐 Amigo secreto' + (ev ? ' "' + ev + '"' : '') + ' — sorteio #' + sorteio.apelido + (sorteio.data ? ', feito em ' + sorteio.data : '') + '\n' +
       'Guarde só com você: com o código e esta lista dá para descobrir o sorteio inteiro. Não encaminhe.\n\n' +
       'Código de recuperação: ' + sorteio.codigo + '\n' +
       'Regras: ' + (sorteio.regras || []).join(' · ') + '\n\n' +
@@ -726,11 +728,11 @@
   });
 
   $('#refazer').addEventListener('click', function () {
-    if (!confirm('Descartar este sorteio (#' + sorteio.apelido + ')? Os links já enviados continuam abrindo, mas mostram um resultado que deixa de valer. ' +
+    if (!confirm('Descartar este sorteio (#' + sorteio.apelido + (sorteio.data ? ', feito em ' + sorteio.data : '') + ')? Os links já enviados continuam abrindo, mas mostram um resultado que deixa de valer. ' +
       'Você precisará sortear e enviar tudo de novo.' +
       (sorteio.codigo ? '\n\nSe você anotou o código de recuperação, dá para voltar a este sorteio depois.' : ''))) return;
     links = [];
-    sorteio = { codigo: '', apelido: '', recuperado: false };
+    sorteio = { codigo: '', apelido: '', data: '', recuperado: false };
     salvarLinks();
     irPara('4');
   });

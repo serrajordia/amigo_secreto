@@ -24,14 +24,15 @@ A página abre perguntando **como enviar o resultado**. O sorteio e as regras s�
 2. **Participantes:** importe uma planilha **Excel (.xlsx/.xls) ou CSV** (colunas `nome`, `email`, `grupo`; [modelo](docs/modelo_participantes.csv); só `nome` é obrigatório) ou adicione um a um. Dá para editar clicando na tabela.
 3. **Regras:** chaves liga/desliga (*ninguém tira alguém do próprio grupo*, *ninguém tira a si mesmo*, *corrente única*), com aviso na hora se o sorteio for impossível.
 4. **Sortear:** gera um link por pessoa. O resultado de cada um vai **dentro do endereço, depois do `#`**, parte que nem o GitHub Pages recebe. Não existe banco de dados. Por padrão também gera um **código de recuperação** (veja abaixo; dá para desmarcar).
-5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links ficam só na aba aberta; sem o código de recuperação, **não feche a página** antes de enviar todos. Quem recebe abre o link, toca em **Revelar** e vê quem tirou, com data, local, valor e o apelido do sorteio (ex.: *Sorteio #4HMP*).
+5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links ficam só na aba aberta; sem o código de recuperação, **não feche a página** antes de enviar todos. Quem recebe abre o link e, **antes de revelar**, vê o pedido da AMA: cadastrar a doação automática da Nota Fiscal Paulista (com botões para o site da NFP e para as instruções). O botão **Revelar** só libera depois de marcar *Estou ciente do pedido*; quem toca em *Já sou doador(a)* não vê o pedido de novo naquele navegador. Depois aparece quem tirou, com data, local, valor e a identificação do sorteio (ex.: *Sorteio #4HMP · feito em 24/11/2026 às 14h32*).
 
 ### 🔁 Sorteio reprodutível (código de recuperação)
-Serve para quando alguém perde o link ou o e-mail ("esqueci quem tirei"). O código tem o formato `1-XXXX-XXXX-XXXX-XXXX-XXXX`:
+Serve para quando alguém perde o link ou o e-mail ("esqueci quem tirei"). O código tem o formato `1-XXXX-XXXX-XXXX-XXXX-XXXX-AAAAMMDD-HHMM`:
 
 - `1` é a **versão** do algoritmo. A v1 fica congelada (vetores fixos em [tests/vetores_codigo.json](tests/vetores_codigo.json)); qualquer mudança futura no sorteio vira v2.
 - Os 16 caracteres seguintes são um **segredo aleatório** (80 bits) gerado pelo site. Ele não é escolhido pelo organizador, para não poder ser adivinhado.
-- Os 4 últimos são uma **conferência** (hash do segredo + lista + regras): detectam erro de digitação e lista alterada.
+- Os 4 seguintes são uma **conferência** (hash do segredo + data + lista + regras): detectam erro de digitação e lista alterada.
+- `AAAAMMDD-HHMM` é a **data e hora do sorteio**, legível, para saber qual sorteio é o certo. Ela só identifica o sorteio (não muda o resultado) e é protegida pela conferência. Códigos antigos, sem a data, continuam valendo.
 - Os números aleatórios saem de `SHA-256("amigo-secreto/v1/<segredo>/<contador>")`. O mesmo código com a **mesma lista** (mesma ordem, grupos e regras) dá o mesmo resultado no site, no Apps Script e no Python. Nomes podem mudar de acento, maiúsculas ou espaços; e-mails e dados do evento podem mudar à vontade.
 
 **Guardar:** na etapa 5, botões de WhatsApp, e-mail, copiar e compartilhar mandam a você mesmo o código junto com a lista na ordem usada e as regras; *Baixar lista (.csv)* gera uma planilha que pode ser importada de volta na etapa 2. Se, na etapa 2, você marcar a caixinha **organiza** na sua linha (opcional), o e-mail já vai para o seu endereço.
@@ -40,7 +41,7 @@ Serve para quando alguém perde o link ou o e-mail ("esqueci quem tirei"). O có
 
 > ⚠️ Quem tem o **código e a lista** consegue refazer o sorteio inteiro. Guarde o código só com você. Se preferir um sorteio sem volta, desmarque a opção (site) ou responda *Não* (planilha).
 
-O apelido (`Sorteio #4HMP`) é derivado do código e aparece nos links e e-mails. Se um sorteio for refeito, os links antigos **continuam abrindo**, mas mostram o resultado antigo; o apelido permite avisar qual sorteio vale.
+O apelido e a data (`Sorteio #4HMP · feito em 24/11/2026 às 14h32`) aparecem nos links e e-mails; num sorteio recuperado pelo código, a data continua sendo a do sorteio original. Se um sorteio for refeito, os links antigos **continuam abrindo**, mas mostram o resultado antigo; o apelido permite avisar qual sorteio vale.
 
 > ⚠️ O link é *codificação*, não criptografia: quem tiver o link lê o resultado daquela pessoa. Mande cada link só ao dono, individualmente, nunca em grupo.
 
@@ -95,6 +96,7 @@ tests/                  pytest (Python) e node --test (JavaScript, inclui o scri
 
 Testes: `python -m pytest` e `node --test tests/*.test.js`.
 Ao alterar `docs/js/sorteio.js`, copie para `docs/apps-script/Sorteio.gs` (um teste garante que estão iguais).
+Ao publicar mudanças em `docs/js` ou `docs/css`, troque o `?v=AAAAMMDD` nos `<script>`/`<link>` de `index.html` e `ver.html`, para que os navegadores não misturem arquivos novos com antigos guardados em cache.
 
 ## O que mudou em relação à versão de 2021
 

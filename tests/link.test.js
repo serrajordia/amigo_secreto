@@ -35,3 +35,8 @@ test('apelido do sorteio vai no link; links antigos (sem apelido) continuam func
   assert.strictEqual(d.tirou, 'Bruno');
   assert.strictEqual(d.apelido, '');
 });
+
+test('data do sorteio vai no link', () => {
+  const url = Link.criar('https://x/ver.html', 'Ana', 'Bruno', {}, 'AB12', '24/11/2026 às 14h32');
+  assert.strictEqual(Link.ler(url.split('#')[1]).data, '24/11/2026 às 14h32');
+});

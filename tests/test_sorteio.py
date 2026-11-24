@@ -246,9 +246,27 @@ def test_cli_reproduz_com_codigo(tmp_path, capsys):
     saida = capsys.readouterr().out
     import re
 
-    cod = re.search(r"1(-[0-9A-Z]{4}){5}", saida).group(0)
+    cod = re.search(r"1(-[0-9A-Z]{4}){5}-\d{8}-\d{4}", saida).group(0)
     apelido = re.search(r"Sorteio #(\w{4})", saida).group(1)
     assert main(["sortear", str(f), "--simular", "--codigo", cod]) == 0
     assert f"Sorteio #{apelido}" in capsys.readouterr().out
     assert main(["sortear", str(f), "--simular", "--codigo", cod, "--permitir-mesmo-grupo"]) == 2
     assert main(["sortear", str(f), "--simular", "--so", "Ana"]) == 2  # --so exige --codigo
+
+
+def test_data_no_codigo_igual_ao_javascript():
+    from datetime import datetime
+
+    from amigo_secreto.sorteio import CodigoInvalido, ler_codigo, novo_codigo
+
+    ps = lista([3, 3, 2])
+    cod = novo_codigo(ps, quando=datetime(2026, 11, 24, 14, 32))
+    assert cod.endswith("-20261124-1432")
+    c = ler_codigo(cod, ps)
+    assert c.data == "24/11/2026 às 14h32"
+    with pytest.raises(CodigoInvalido):
+        ler_codigo(cod[:-1] + "3", ps)
+    # código com data gerado pelo JavaScript (vetor "família com acentos")
+    v = _vetores()[0]
+    ps0 = [Participante(p["nome"], p["email"], p["grupo"]) for p in v["participantes"]]
+    assert ler_codigo("1-A95R-6S33-1G2Y-CZ7W-CA63-20261124-1432", ps0).apelido == "FCM0"

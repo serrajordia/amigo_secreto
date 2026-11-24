@@ -200,19 +200,20 @@ function menuSortear() {
       'Quer um código de recuperação?\n\nCom ele e esta mesma lista (mesma ordem, grupos e regras), dá para reenviar ' +
       'o e-mail de quem perder, pelo menu "Reenviar". Mas quem tiver o código e a planilha consegue descobrir o sorteio inteiro.\n\n' +
       'Sim = gerar o código · Não = sorteio sem volta (ninguém consegue refazer)', ui.ButtonSet.YES_NO) === ui.Button.YES;
-    var codigo = '', apelido, rnd;
+    var codigo = '', apelido, data, rnd;
     if (querCodigo) {
       codigo = Sorteio.novoCodigo(d.participantes, d.regras);
       var c = Sorteio.lerCodigo(codigo, d.participantes, d.regras);
-      rnd = c.rnd; apelido = c.apelido;
+      rnd = c.rnd; apelido = c.apelido; data = c.data;
     } else {
       apelido = Sorteio.apelidoAleatorio();
+      data = Sorteio.descreverData(Sorteio.carimbo());
     }
 
     var destino = Sorteio.sortear(d.participantes, d.regras, rnd);
     var falhas = [];
     for (var i = 0; i < n; i++) {
-      try { enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, apelido); }
+      try { enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, apelido + ' · ' + data); }
       catch (err) { falhas.push(d.participantes[i].nome); }
     }
     var textoCodigo = codigo
@@ -225,7 +226,7 @@ function menuSortear() {
           : 'Refaça o sorteio para TODOS e avise o pessoal para ignorar o e-mail anterior.') + textoCodigo, ui.ButtonSet.OK);
     } else {
       ui.alert('Sorteio #' + apelido + ' feito! 🎉',
-        n + ' e-mails enviados. Nem você sabe quem tirou quem.\nPeça para todos olharem a caixa de entrada (e o spam).\n\nAinda restam ' + MailApp.getRemainingDailyQuota() + ' e-mails hoje.' + textoCodigo, ui.ButtonSet.OK);
+        'Feito em ' + data + '.\n' + n + ' e-mails enviados. Nem você sabe quem tirou quem.\nPeça para todos olharem a caixa de entrada (e o spam).\n\nAinda restam ' + MailApp.getRemainingDailyQuota() + ' e-mails hoje.' + textoCodigo, ui.ButtonSet.OK);
     }
   } catch (e) {
     ui.alert('Erro', String(e.message || e), ui.ButtonSet.OK);
@@ -257,9 +258,9 @@ function menuReenviar() {
     if (MailApp.getRemainingDailyQuota() < 1) return ui.alert('Cota diária esgotada', 'Tente amanhã.', ui.ButtonSet.OK);
 
     var destino = Sorteio.sortear(d.participantes, d.regras, c.rnd), i = achados[0];
-    enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, c.apelido);
+    enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, c.apelido + (c.data ? ' · ' + c.data : ''));
     ui.alert('E-mail reenviado',
-      'Reenviei o resultado do sorteio #' + c.apelido + ' para ' + d.participantes[i].nome + ' (' + d.participantes[i].email + ').\nÉ o mesmo resultado do sorteio original.', ui.ButtonSet.OK);
+      'Reenviei o resultado do sorteio #' + c.apelido + (c.data ? ' (feito em ' + c.data + ')' : '') + ' para ' + d.participantes[i].nome + ' (' + d.participantes[i].email + ').\nÉ o mesmo resultado do sorteio original.', ui.ButtonSet.OK);
   } catch (e) {
     ui.alert('Erro', String(e.message || e), ui.ButtonSet.OK);
   }
@@ -271,6 +272,7 @@ function busca_(s) {
 
 /* ------------------------------------------------------------------- e-mail */
 
+/** apelido: identificação do sorteio, ex.: "FCM0 · 24/11/2026 às 14h32" (vai no rodapé do e-mail). */
 function enviarResultado_(quem, tirou, ev, apelido) {
   var linhas = [['Data da festa', ev.dataFesta], ['Local', ev.local], ['Valor sugerido', ev.valor], ['Organização', ev.organizador]]
     .filter(function (l) { return l[1]; });

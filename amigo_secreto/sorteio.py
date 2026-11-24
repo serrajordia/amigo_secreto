@@ -22,6 +22,7 @@ import re
 import secrets
 import unicodedata
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Sequence
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -249,17 +250,19 @@ def sortear(
 # ---------------------------------------------------------------------------------------------
 # Sorteio reprodutível ("código de recuperação"), versão 1 — mesma lógica de docs/js/sorteio.js.
 #
-# Código: 1-SSSS-SSSS-SSSS-SSSS-CCCC
+# Código: 1-SSSS-SSSS-SSSS-SSSS-CCCC-AAAAMMDD-HHMM
 #   1     versão (o algoritmo da v1 fica congelado; mudanças futuras viram v2)
 #   S×16  segredo aleatório (80 bits, alfabeto Crockford base32)
-#   C×4   conferência = hash(segredo + lista + regras): pega erro de digitação e lista alterada
+#   C×4   conferência = hash(segredo + data + lista + regras): pega erro de digitação e lista alterada
+#   data  data-hora local do sorteio, legível (só identifica; não muda o resultado). Códigos antigos,
+#         sem a data, continuam valendo.
 # Números aleatórios: SHA-256("amigo-secreto/v1/<segredo>/<contador>"), 8 palavras de 32 bits por bloco.
 # Com o mesmo código e a mesma lista (mesma ordem, grupos e regras), o resultado é idêntico no
 # navegador, no Apps Script e aqui. Quem tem o código E a lista consegue refazer o sorteio inteiro.
 # ---------------------------------------------------------------------------------------------
 
 ALFABETO = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
-_CODIGO_RE = re.compile(r"^1[0-9A-HJKMNP-TV-Z]{20}$")
+_CODIGO_RE = re.compile(r"^1[0-9A-HJKMNP-TV-Z]{20}(\d{12})?$")
 
 
 class CodigoInvalido(ValueError):
@@ -281,7 +284,7 @@ def _canonico(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower()).strip()
 
 
-def _conferencia(segredo: str, ps: Sequence[Participante], regras: Regras) -> str:
+def _conferencia(segredo: str, ps: Sequence[Participante], regras: Regras, quando: str = "") -> str:
     bits = "".join(
         "1" if b else "0"
         for b in (
@@ -291,11 +294,27 @@ def _conferencia(segredo: str, ps: Sequence[Participante], regras: Regras) -> st
         )
     )
     lista = "\u001e".join(_canonico(p.nome) + "\u001f" + p.grupo.strip().lower() for p in ps)
-    return _base32(_hash(f"amigo-secreto/v1/conferencia/{segredo}|{bits}|{lista}"), 4)
+    marca = f"{segredo}@{quando}" if quando else segredo
+    return _base32(_hash(f"amigo-secreto/v1/conferencia/{marca}|{bits}|{lista}"), 4)
 
 
 def _formata(c: str) -> str:
-    return c[0] + "-" + "-".join(c[k : k + 4] for k in range(1, 21, 4))
+    base = c[0] + "-" + "-".join(c[k : k + 4] for k in range(1, 21, 4))
+    return base + (f"-{c[21:29]}-{c[29:]}" if len(c) > 21 else "")
+
+
+def _carimbo_valido(c: str) -> bool:
+    if not re.fullmatch(r"\d{12}", c):
+        return False
+    m, d, h, mi = int(c[4:6]), int(c[6:8]), int(c[8:10]), int(c[10:12])
+    return 1 <= m <= 12 and 1 <= d <= 31 and h < 24 and mi < 60
+
+
+def descrever_data(c: str) -> str:
+    """'202611241432' -> '24/11/2026 às 14h32' (vazio se não houver data)."""
+    if not c or not _carimbo_valido(c):
+        return ""
+    return f"{c[6:8]}/{c[4:6]}/{c[0:4]} às {c[8:10]}h{c[10:12]}"
 
 
 def _normaliza_codigo(codigo: str) -> str:
@@ -330,25 +349,34 @@ class CodigoLido:
     codigo: str
     apelido: str  # curto e público (vai no e-mail/link): distingue um sorteio do outro
     segredo: str
+    quando: str = ""  # "AAAAMMDDHHMM" do sorteio (vazio em códigos antigos)
+
+    @property
+    def data(self) -> str:
+        return descrever_data(self.quando)
 
     def gerador(self) -> GeradorReprodutivel:
         return GeradorReprodutivel(self.segredo)
 
 
-def novo_codigo(ps: Sequence[Participante], regras: Regras = Regras()) -> str:
+def novo_codigo(ps: Sequence[Participante], regras: Regras = Regras(), quando: datetime | None = None) -> str:
     segredo = "".join(secrets.choice(ALFABETO) for _ in range(16))
-    return _formata("1" + segredo + _conferencia(segredo, ps, regras))
+    q = (quando or datetime.now()).strftime("%Y%m%d%H%M")
+    return _formata("1" + segredo + _conferencia(segredo, ps, regras, q) + q)
 
 
 def ler_codigo(codigo: str, ps: Sequence[Participante], regras: Regras = Regras()) -> CodigoLido:
     """Confere o código com a lista e as regras. Lança ``CodigoInvalido`` se não conferir."""
     c = _normaliza_codigo(codigo)
-    if not _CODIGO_RE.match(c):
-        raise CodigoInvalido("Código incompleto ou inválido. O formato é 1-XXXX-XXXX-XXXX-XXXX-XXXX.")
+    quando = c[21:] if len(c) == 33 else ""
+    if not _CODIGO_RE.match(c) or (quando and not _carimbo_valido(quando)):
+        raise CodigoInvalido(
+            "Código incompleto ou inválido. O formato é 1-XXXX-XXXX-XXXX-XXXX-XXXX-AAAAMMDD-HHMM."
+        )
     segredo = c[1:17]
-    if c[17:] != _conferencia(segredo, ps, regras):
+    if c[17:21] != _conferencia(segredo, ps, regras, quando):
         raise CodigoInvalido(
             "Este código não confere com a lista atual. Confira se o código foi digitado certo e se os "
             "participantes (na mesma ordem), os grupos e as regras estão exatamente como no dia do sorteio."
         )
-    return CodigoLido(_formata(c), _base32(_hash(f"amigo-secreto/v1/apelido/{segredo}"), 4), segredo)
+    return CodigoLido(_formata(c), _base32(_hash(f"amigo-secreto/v1/apelido/{segredo}"), 4), segredo, quando)

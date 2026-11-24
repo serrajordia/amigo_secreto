@@ -114,7 +114,7 @@ def _cmd_sortear(a) -> int:
     grupos = len({p.grupo for p in ps if p.grupo})
     print(f"✓ Sorteio válido para {len(ps)} participantes em {grupos} grupo(s). Resultado não exibido.")
     if codigo:
-        print(f"  Sorteio #{codigo.apelido}")
+        print(f"  Sorteio #{codigo.apelido}" + (f", feito em {codigo.data}" if codigo.data else ""))
         if a.gerar_codigo:
             print(f"  Código de recuperação: {codigo.codigo}")
             print("  Guarde-o só com você. Com ele e esta mesma lista (mesma ordem, grupos e regras),")
@@ -136,7 +136,8 @@ def _cmd_sortear(a) -> int:
             return 1
     n = enviar_resultados(
         carregar_credenciais(), ps, destino, evento,
-        apelido=codigo.apelido if codigo else "", somente=somente,
+        apelido=(codigo.apelido + (f" · {codigo.data}" if codigo.data else "")) if codigo else "",
+        somente=somente,
     )
     print(f"✓ {n} e-mails enviados.")
     return 0

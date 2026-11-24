@@ -198,10 +198,12 @@ var Sorteio = (function () {
   /* ------------------------------------------------------------------------------------------
    * Sorteio reprodutível ("código de recuperação"), versão 1. Mesma lógica em amigo_secreto/sorteio.py.
    *
-   * Código: 1-SSSS-SSSS-SSSS-SSSS-CCCC
+   * Código: 1-SSSS-SSSS-SSSS-SSSS-CCCC-AAAAMMDD-HHMM
    *   1     versão (o algoritmo da v1 fica congelado: mudanças futuras viram v2)
    *   S×16  segredo aleatório (80 bits, alfabeto Crockford base32)
-   *   C×4   conferência = hash(segredo + lista + regras): pega erro de digitação e lista alterada
+   *   C×4   conferência = hash(segredo + data + lista + regras): pega erro de digitação e lista alterada
+   *   data  data-hora local do sorteio, legível (só identifica o sorteio; não muda o resultado).
+   *         Códigos antigos, sem a data, continuam valendo.
    * Números aleatórios: SHA-256("amigo-secreto/v1/<segredo>/<contador>"), 8 palavras de 32 bits por bloco.
    * Com o mesmo código e a mesma lista (mesma ordem, grupos e regras) o resultado é idêntico no
    * navegador, no Apps Script e no Python. Quem tem o código E a lista consegue refazer o sorteio inteiro.
@@ -292,16 +294,38 @@ var Sorteio = (function () {
       .toLowerCase().replace(/\s+/g, ' ').trim();
   }
 
-  function conferencia(segredo, ps, regras) {
+  /** Data-hora local do sorteio como 12 dígitos "AAAAMMDDHHMM" (aceita Date, string de 12 dígitos ou nada = agora). */
+  function carimbo(quando) {
+    if (typeof quando === 'string' && /^\d{12}$/.test(quando)) return quando;
+    var d = quando instanceof Date ? quando : new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return String(d.getFullYear()) + p(d.getMonth() + 1) + p(d.getDate()) + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  function carimboValido(c) {
+    if (!/^\d{12}$/.test(c)) return false;
+    var m = +c.slice(4, 6), d = +c.slice(6, 8), h = +c.slice(8, 10), mi = +c.slice(10, 12);
+    return m >= 1 && m <= 12 && d >= 1 && d <= 31 && h < 24 && mi < 60;
+  }
+
+  /** "202611241432" → "24/11/2026 às 14h32". */
+  function descreverData(c) {
+    if (!c || !carimboValido(c)) return '';
+    return c.slice(6, 8) + '/' + c.slice(4, 6) + '/' + c.slice(0, 4) + ' às ' + c.slice(8, 10) + 'h' + c.slice(10, 12);
+  }
+
+  // Sem data (códigos antigos) a conferência é exatamente a original; com data, ela também protege a data.
+  function conferencia(segredo, ps, regras, quando) {
     var r = normalizaRegras(regras);
-    var txt = 'amigo-secreto/v1/conferencia/' + segredo + '|' +
+    var txt = 'amigo-secreto/v1/conferencia/' + segredo + (quando ? '@' + quando : '') + '|' +
       (r.permitirAutossorteio && r.permitirMesmoGrupo ? 1 : 0) + (r.permitirMesmoGrupo ? 1 : 0) + (r.correnteUnica ? 1 : 0) + '|' +
       ps.map(function (p) { return canonico(p.nome) + '\u001f' + grupo(p); }).join('\u001e');
     return base32(hashTexto(txt), 4);
   }
 
-  function formataCodigo(c) { // c normalizado, 21 caracteres
-    return c.charAt(0) + '-' + c.slice(1).match(/.{4}/g).join('-');
+  function formataCodigo(c) { // c normalizado: 21 caracteres, ou 33 com a data-hora no fim
+    return c.charAt(0) + '-' + c.slice(1, 21).match(/.{4}/g).join('-') +
+      (c.length > 21 ? '-' + c.slice(21, 29) + '-' + c.slice(29) : '');
   }
 
   function normalizaCodigo(codigo) {
@@ -321,29 +345,37 @@ var Sorteio = (function () {
   /** Apelido curto e público do sorteio (aparece no link/e-mail): ajuda a distinguir sorteios. */
   function apelidoDoSegredo(segredo) { return base32(hashTexto('amigo-secreto/v1/apelido/' + segredo), 4); }
 
-  /** Cria um código novo para esta lista e estas regras. */
-  function novoCodigo(ps, regras) {
-    var b = bytesAleatorios(16), segredo = '';
+  /**
+   * Cria um código novo para esta lista e estas regras, com a data-hora do sorteio no fim
+   * (1-SSSS-SSSS-SSSS-SSSS-CCCC-AAAAMMDD-HHMM). `quando`: Date ou "AAAAMMDDHHMM"; padrão = agora.
+   */
+  function novoCodigo(ps, regras, quando) {
+    var b = bytesAleatorios(16), segredo = '', q = carimbo(quando);
     for (var i = 0; i < 16; i++) segredo += ALFABETO.charAt(b[i] & 31);
-    return formataCodigo('1' + segredo + conferencia(segredo, ps, regras));
+    return formataCodigo('1' + segredo + conferencia(segredo, ps, regras, q) + q);
   }
 
   /**
-   * Lê um código e confere com a lista/regras. Devolve {ok, codigo, apelido, rnd} ou {ok:false, erro}.
+   * Lê um código e confere com a lista/regras. Devolve {ok, codigo, apelido, quando, data, rnd} ou {ok:false, erro}.
+   * `quando` = "AAAAMMDDHHMM" e `data` = "24/11/2026 às 14h32" (vazios em códigos antigos, sem data).
    * Use o `rnd` em sortear(ps, regras, rnd) para obter o resultado daquele código.
    */
   function lerCodigo(codigo, ps, regras) {
     var c = normalizaCodigo(codigo);
-    if (!/^1[0-9A-HJKMNP-TV-Z]{20}$/.test(c))
-      return { ok: false, erro: 'Código incompleto ou inválido. O formato é 1-XXXX-XXXX-XXXX-XXXX-XXXX.' };
+    var quando = c.length === 33 ? c.slice(21) : '';
+    if (!/^1[0-9A-HJKMNP-TV-Z]{20}(\d{12})?$/.test(c) || (quando && !carimboValido(quando)))
+      return { ok: false, erro: 'Código incompleto ou inválido. O formato é 1-XXXX-XXXX-XXXX-XXXX-XXXX-AAAAMMDD-HHMM.' };
     var segredo = c.slice(1, 17);
-    if (c.slice(17) !== conferencia(segredo, ps, regras))
+    if (c.slice(17, 21) !== conferencia(segredo, ps, regras, quando))
       return {
         ok: false,
         erro: 'Este código não confere com a lista atual. Confira se o código foi digitado certo e se os participantes ' +
           '(na mesma ordem), os grupos e as regras estão exatamente como no dia do sorteio.'
       };
-    return { ok: true, codigo: formataCodigo(c), apelido: apelidoDoSegredo(segredo), rnd: geradorDoSegredo(segredo) };
+    return {
+      ok: true, codigo: formataCodigo(c), apelido: apelidoDoSegredo(segredo),
+      quando: quando, data: descreverData(quando), rnd: geradorDoSegredo(segredo)
+    };
   }
 
   /** Apelido curto aleatório para sorteios sem código (só para distinguir sorteios). */
@@ -355,7 +387,8 @@ var Sorteio = (function () {
 
   return {
     sortear: sortear, verificar: verificar, podeTirar: podeTirar, EMAIL_RE: EMAIL_RE,
-    novoCodigo: novoCodigo, lerCodigo: lerCodigo, apelidoAleatorio: apelidoAleatorio, _sha256: sha256
+    novoCodigo: novoCodigo, lerCodigo: lerCodigo, apelidoAleatorio: apelidoAleatorio,
+    carimbo: carimbo, descreverData: descreverData, _sha256: sha256
   };
 })();
 

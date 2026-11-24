@@ -369,5 +369,16 @@ body[data-etapa="0"] .faixa-parceria { display: none; }
 .convite h2 { font-size: 1.2rem; }
 .convite code { white-space: nowrap; font-size: .85rem; }
 .convite .lista-passos { padding-left: 20px; }
+.convite-chamada { font-size: 1.02rem; }
+.convite-motivos { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+.convite-motivos li { padding-left: 26px; position: relative; }
+.convite-motivos li::before { content: "✓"; position: absolute; left: 4px; color: var(--ok); font-weight: 800; }
+.convite-botoes { margin: 12px 0 8px; }
+.convite-passos { margin: 4px 0 12px; }
+.convite-passos summary { cursor: pointer; color: var(--primaria); font-weight: 600; }
+.ciente { padding: 12px 14px; border: 2px solid var(--primaria); border-radius: 10px; background: var(--superficie); margin: 8px 0 6px; cursor: pointer; }
+.ciente input { width: 22px; height: 22px; margin-top: 1px; }
+#dica-revelar { margin-top: 8px; }
+#revelar:disabled { opacity: .55; cursor: not-allowed; }
 .opcao-ama { display: block; font-size: .9rem; color: var(--texto-suave); margin: 4px 0 12px; }
 .opcao-ama input { margin-right: 6px; }

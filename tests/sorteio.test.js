@@ -92,7 +92,7 @@ test('mesmo código + mesma lista = mesmo sorteio; aceita minúsculas, espaços 
   const ps = lista([3, 3, 2, 4]);
   for (const regras of [R0, { ...R0, correnteUnica: true }]) {
     const cod = S.novoCodigo(ps, regras);
-    assert.match(cod, /^1(-[0-9A-HJKMNP-TV-Z]{4}){5}$/);
+    assert.match(cod, /^1(-[0-9A-HJKMNP-TV-Z]{4}){5}-\d{8}-\d{4}$/);
     const a = S.sortear(ps, regras, S.lerCodigo(cod, ps, regras).rnd, OP);
     const bagunçado = cod.toLowerCase().replace(/-/g, ' ').replace(/0/g, 'o').replace(/1/g, 'l');
     const b = S.sortear(ps, regras, S.lerCodigo(bagunçado, ps, regras).rnd, OP);
@@ -127,4 +127,19 @@ test('códigos novos são diferentes e o gerador é aproximadamente uniforme', (
   const caixas = new Array(10).fill(0);
   for (let k = 0; k < 20000; k++) caixas[Math.floor(c.rnd() * 10)]++;
   caixas.forEach((n) => assert.ok(Math.abs(n - 2000) < 200));
+});
+
+test('data-hora no código: legível, protegida pela conferência e sem mudar o resultado', () => {
+  const ps = lista([3, 3, 2]);
+  const cod = S.novoCodigo(ps, R0, new Date(2026, 10, 24, 14, 32));
+  assert.match(cod, /-20261124-1432$/);
+  const c = S.lerCodigo(cod, ps, R0);
+  assert.ok(c.ok);
+  assert.strictEqual(c.quando, '202611241432');
+  assert.strictEqual(c.data, '24/11/2026 às 14h32');
+  for (const ruim of [cod.replace(/1432$/, '1433'), cod.replace(/1432$/, '1472'), cod.slice(0, 26)]) {
+    assert.strictEqual(S.lerCodigo(ruim, ps, R0).ok, false, ruim);
+  }
+  // códigos antigos (sem data) continuam valendo, com data vazia
+  for (const v of VETORES) assert.strictEqual(S.lerCodigo(v.codigo, v.participantes, v.regras).data, '');
 });
