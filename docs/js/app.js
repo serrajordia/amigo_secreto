@@ -217,7 +217,8 @@
     var nomes = {
       nome: ['nome', 'name', 'participante'],
       email: ['email', 'e-mail', 'mail', 'e_mail'],
-      grupo: ['grupo', 'familia', 'grupo familiar', 'group', 'nucleo']
+      grupo: ['grupo', 'familia', 'grupo familiar', 'group', 'nucleo'],
+      organiza: ['organiza', 'organizador', 'organizadora', 'quem organiza']
     };
     var cab = linhas[0].map(normaliza), idx = {};
     Object.keys(nomes).forEach(function (k) {
@@ -225,9 +226,13 @@
     });
     var corpo = linhas.slice(1);
     if (idx.nome === undefined) { idx = { nome: 0, email: 1, grupo: 2 }; corpo = linhas; } // sem cabeçalho
+    var temOrganizador = false;
     return corpo.map(function (l) {
       var col = function (k) { return idx[k] !== undefined && l[idx[k]] !== undefined ? l[idx[k]].trim() : ''; };
-      return { nome: col('nome'), email: col('email'), grupo: col('grupo') };
+      var p = { nome: col('nome'), email: col('email'), grupo: col('grupo') };
+      // coluna "organiza" (vem na planilha de recuperação): só o primeiro marcado vale
+      if (!temOrganizador && /^(sim|s|x|1|true|verdadeiro)$/i.test(col('organiza'))) { p.organizador = true; temOrganizador = true; }
+      return p;
     });
   }
 
@@ -272,6 +277,7 @@
       if (!novos.length) return aviso(st, 'erro', 'Não encontrei participantes nesse arquivo.');
       if (estado.participantes.length &&
         !confirm('Já existem ' + estado.participantes.length + ' participantes.\n\nOK = substituir a lista\nCancelar = adicionar ao final')) {
+        if (organizador()) novos.forEach(function (p) { delete p.organizador; }); // continua havendo um só
         estado.participantes = estado.participantes.concat(novos);
       } else {
         estado.participantes = novos;
@@ -358,6 +364,24 @@
       celula(tr, p.nome, 'nome', i);
       celula(tr, p.email, 'email', i);
       celula(tr, p.grupo, 'grupo', i, true);
+
+      var to = document.createElement('td');
+      var lo = document.createElement('label'); lo.className = 'marca-org';
+      var co = document.createElement('input'); co.type = 'checkbox'; co.checked = !!p.organizador;
+      co.setAttribute('aria-label', (p.nome || 'participante ' + (i + 1)) + ' é quem organiza o sorteio');
+      co.addEventListener('change', function () {
+        ps.forEach(function (q, k) { if (k === i && co.checked) q.organizador = true; else delete q.organizador; });
+        if (co.checked && !String(estado.evento.organizador || '').trim()) {
+          estado.evento.organizador = p.nome;
+          $('#ev-organizador').value = p.nome;
+        }
+        mudouDados();
+        renderLista();
+      });
+      lo.appendChild(co); lo.appendChild(document.createTextNode('organiza'));
+      to.appendChild(lo); tr.appendChild(to);
+      tr.classList.toggle('organizador', !!p.organizador);
+
       var td = document.createElement('td');
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'remover'; b.textContent = '✕';
@@ -368,9 +392,18 @@
     });
     $('#vazio').hidden = ps.length > 0;
     var grupos = gruposContagem();
-    $('#contagem').textContent = ps.length ? ps.length + ' participante(s) · ' + Object.keys(grupos).length + ' grupo(s)' : '';
+    var org = organizador();
+    $('#contagem').textContent = ps.length ? ps.length + ' participante(s) · ' + Object.keys(grupos).length + ' grupo(s)' +
+      (org ? ' · organiza: ' + org.p.nome : '') : '';
     $('#grupos').innerHTML = Object.keys(grupos).map(function (g) { return '<option value="' + esc(grupos[g].rotulo) + '">'; }).join('');
     atualizarBotaoSortear();
+  }
+
+  /** Participante marcado como organizador (caixinha "organiza"), ou null. */
+  function organizador() {
+    for (var i = 0; i < estado.participantes.length; i++)
+      if (estado.participantes[i].organizador) return { p: estado.participantes[i], i: i };
+    return null;
   }
 
   function gruposContagem() {
@@ -432,13 +465,18 @@
   }
 
   /* ------------------------------------------------------ 4. sortear */
-  function atualizarResumo() {
-    var n = estado.participantes.length, grupos = Object.keys(gruposContagem()).length;
+  function descricaoRegras() {
     var regras = [];
     if (estado.regras.grupo) regras.push('sem tirar do próprio grupo');
     else if (estado.regras.auto) regras.push('ninguém se tira');
     else regras.push('pode se tirar');
     if (estado.regras.corrente) regras.push('corrente única');
+    return regras;
+  }
+
+  function atualizarResumo() {
+    var n = estado.participantes.length, grupos = Object.keys(gruposContagem()).length;
+    var regras = descricaoRegras();
     var cartoes = [[n, 'participantes'], [grupos, 'grupos familiares'], [regras.join(' · '), 'regras']];
     $('#resumo').innerHTML = cartoes.map(function (c) {
       return '<div class="cartao"><b' + (String(c[0]).length > 6 ? ' style="font-size:1rem"' : '') + '>' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span></div>';
@@ -474,7 +512,14 @@
     links = ps.map(function (p, i) {
       return { nome: p.nome, email: p.email, enviado: false, url: Link.criar(base, p.nome, ps[destino[i]].nome, estado.evento, apelido) };
     });
-    sorteio = { codigo: codigo || '', apelido: apelido, recuperado: !!recuperado };
+    var org = organizador();
+    sorteio = {
+      codigo: codigo || '', apelido: apelido, recuperado: !!recuperado,
+      // foto da lista e das regras usadas: a mensagem de recuperação não muda se a lista for editada depois
+      lista: ps.map(function (p) { return { nome: p.nome, email: p.email || '', grupo: p.grupo || '' }; }),
+      regras: descricaoRegras(),
+      org: org ? org.i : -1
+    };
     salvarLinks();
     irPara('5');
   }
@@ -557,12 +602,13 @@
       : 'Os links só existem nesta aba: <strong>não feche a página</strong> antes de enviar todos.';
     $('#apelido-sorteio').textContent = sorteio.apelido
       ? 'Este é o sorteio #' + sorteio.apelido + ' (aparece no link de cada pessoa, para ninguém confundir com um sorteio anterior).' : '';
+    renderGuardar();
     aviso($('#status-envio'), 'ok', sorteio.recuperado
       ? '✓ Links recuperados: o resultado é o mesmo do sorteio original. Reenvie só para quem perdeu o link.' : '');
     ul.innerHTML = '';
     links.forEach(function (l, i) {
       var li = document.createElement('li');
-      var nome = document.createElement('span'); nome.className = 'nome'; nome.textContent = l.nome;
+      var nome = document.createElement('span'); nome.className = 'nome'; nome.textContent = l.nome + (i === sorteio.org ? ' (você)' : '');
       var acoes = document.createElement('span'); acoes.className = 'acoes';
 
       var wa = ancora('WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(textoMensagem(l)));
@@ -604,6 +650,71 @@
       ul.appendChild(li);
     });
     atualizarProgresso();
+  }
+
+  /* Mensagem para o organizador guardar: código + lista na ordem usada + regras. */
+  function textoRecuperacao() {
+    var ev = estado.evento.nome.trim(), lista = sorteio.lista || [];
+    var site = location.origin + location.pathname;
+    return '🔐 Amigo secreto' + (ev ? ' "' + ev + '"' : '') + ' — sorteio #' + sorteio.apelido + '\n' +
+      'Guarde só com você: com o código e esta lista dá para descobrir o sorteio inteiro. Não encaminhe.\n\n' +
+      'Código de recuperação: ' + sorteio.codigo + '\n' +
+      'Regras: ' + (sorteio.regras || []).join(' · ') + '\n\n' +
+      'Participantes, na ordem usada no sorteio:\n' +
+      lista.map(function (p, i) { return (i + 1) + '. ' + p.nome + (p.grupo ? ' (' + p.grupo + ')' : ''); }).join('\n') + '\n\n' +
+      'Para recuperar: abra ' + site + ', deixe a lista nesta mesma ordem, com os mesmos grupos e regras, ' +
+      'e use a etapa 4 → "Recupere com o código".';
+  }
+
+  function csvRecuperacao() {
+    var q = function (v) { v = String(v == null ? '' : v); return /[",;\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    return '\uFEFFnome,email,grupo,organiza\r\n' + (sorteio.lista || []).map(function (p, i) {
+      return [p.nome, p.email, p.grupo, i === sorteio.org ? 'sim' : ''].map(q).join(',');
+    }).join('\r\n') + '\r\n';
+  }
+
+  function renderGuardar() {
+    var caixa = $('#guardar-acoes');
+    caixa.innerHTML = '';
+    if (!sorteio.codigo) return;
+    var org = sorteio.org >= 0 && sorteio.lista ? sorteio.lista[sorteio.org] : null;
+    $('#guardar-texto').textContent = org
+      ? 'Mande o código e a lista para você mesmo(a), ' + org.nome + (org.email ? ' (o e-mail já vai para ' + org.email + ')' : '') + ':'
+      : 'Mande o código e a lista para você mesmo(a) (no WhatsApp, escolha a sua própria conversa):';
+    var texto = textoRecuperacao(), assunto = '🔐 Recuperação do sorteio #' + sorteio.apelido + (estado.evento.nome.trim() ? ' — ' + estado.evento.nome.trim() : '');
+
+    caixa.appendChild(ancora('WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(texto)));
+    var em = ancora('E-mail', 'mailto:' + encodeURIComponent(org && org.email ? org.email : '') +
+      '?subject=' + encodeURIComponent(assunto) + '&body=' + encodeURIComponent(texto));
+    em.removeAttribute('target');
+    caixa.appendChild(em);
+
+    var cp = botao('Copiar código e lista');
+    cp.addEventListener('click', function () {
+      navigator.clipboard.writeText(texto).then(function () {
+        cp.textContent = '✓ Copiado';
+        setTimeout(function () { cp.textContent = 'Copiar código e lista'; }, 2000);
+      }).catch(function () { cp.textContent = 'Não deu'; });
+    });
+    caixa.appendChild(cp);
+
+    if (navigator.share) {
+      var sh = botao('Compartilhar');
+      sh.addEventListener('click', function () {
+        navigator.share({ title: assunto, text: texto }).catch(function () { /* cancelado */ });
+      });
+      caixa.appendChild(sh);
+    }
+
+    var bx = botao('Baixar lista (.csv)');
+    bx.addEventListener('click', function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csvRecuperacao()], { type: 'text/csv;charset=utf-8' }));
+      a.download = 'amigo-secreto-sorteio-' + sorteio.apelido + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+    caixa.appendChild(bx);
   }
 
   $('#copiar-codigo').addEventListener('click', function () {

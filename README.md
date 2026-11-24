@@ -34,6 +34,8 @@ Serve para quando alguém perde o link ou o e-mail ("esqueci quem tirei"). O có
 - Os 4 últimos são uma **conferência** (hash do segredo + lista + regras): detectam erro de digitação e lista alterada.
 - Os números aleatórios saem de `SHA-256("amigo-secreto/v1/<segredo>/<contador>")`. O mesmo código com a **mesma lista** (mesma ordem, grupos e regras) dá o mesmo resultado no site, no Apps Script e no Python. Nomes podem mudar de acento, maiúsculas ou espaços; e-mails e dados do evento podem mudar à vontade.
 
+**Guardar:** na etapa 5, botões de WhatsApp, e-mail, copiar e compartilhar mandam a você mesmo o código junto com a lista na ordem usada e as regras; *Baixar lista (.csv)* gera uma planilha que pode ser importada de volta na etapa 2. Se, na etapa 2, você marcar a caixinha **organiza** na sua linha (opcional), o e-mail já vai para o seu endereço.
+
 **Recuperar:** no modo rápido, etapa 4 → *Recupere com o código* (refaz a lista de links, com o mesmo resultado). No modo e-mail, menu **↻ Reenviar o e-mail de uma pessoa** (reenvia só para ela; dá para corrigir o e-mail na aba antes). No Python, `--codigo 1-… --so "Ana"`.
 
 > ⚠️ Quem tem o **código e a lista** consegue refazer o sorteio inteiro. Guarde o código só com você. Se preferir um sorteio sem volta, desmarque a opção (site) ou responda *Não* (planilha).

@@ -175,7 +175,8 @@
     <!-- 2. PARTICIPANTES ------------------------------------------------ -->
     <section class="etapa" data-etapa="2" aria-labelledby="t2" hidden>
       <h2 id="t2">Participantes</h2>
-      <p class="lead">Importe uma planilha (Excel ou CSV) ou adicione um a um. O <strong>e-mail é opcional</strong> neste modo. O <strong>grupo familiar</strong> também: use o mesmo nome para quem mora junto, por exemplo.</p>
+      <p class="lead">Importe uma planilha (Excel ou CSV) ou adicione um a um. O <strong>e-mail é opcional</strong> neste modo. O <strong>grupo familiar</strong> também: use o mesmo nome para quem mora junto, por exemplo.
+        Se você também participa, marque a caixinha <strong>organiza</strong> na sua linha (opcional): depois do sorteio, o código de recuperação já vai para o seu e-mail.</p>
 
       <div class="importar" id="soltar">
         <p><strong>Arraste uma planilha (Excel ou CSV) aqui</strong> ou</p>
@@ -197,7 +198,7 @@
 
       <div class="tabela-wrap">
         <table class="tabela" id="tabela">
-          <thead><tr><th>#</th><th>Nome</th><th>E-mail</th><th>Grupo</th><th><span class="sr">Ações</span></th></tr></thead>
+          <thead><tr><th>#</th><th>Nome</th><th>E-mail</th><th>Grupo</th><th>Quem organiza</th><th><span class="sr">Ações</span></th></tr></thead>
           <tbody></tbody>
         </table>
         <p class="vazio" id="vazio">Ninguém cadastrado ainda.</p>
@@ -259,7 +260,9 @@
       <div id="status-envio" class="aviso" role="status" aria-live="polite" hidden></div>
       <div class="aviso info caixa-codigo" id="caixa-codigo" hidden>
         <p><strong>Código de recuperação:</strong> <code id="codigo"></code> <button type="button" class="btn btn-sec btn-pequeno" id="copiar-codigo">Copiar código</button></p>
-        <small>Anote em lugar seguro, só com você. Se alguém perder o link (ou esta aba fechar), volte à etapa 4 com a mesma lista e use <em>Recupere com o código</em>. Quem tiver o código e a lista consegue descobrir o sorteio inteiro.</small>
+        <p class="guardar-texto" id="guardar-texto"></p>
+        <div class="acoes" id="guardar-acoes"></div>
+        <small>Para recuperar é preciso o código <strong>e</strong> a lista na mesma ordem: a mensagem acima leva os dois, e a planilha (.csv) pode ser importada de volta na etapa 2. Se alguém perder o link (ou esta aba fechar), volte à etapa 4 e use <em>Recupere com o código</em>. Guarde só com você: quem tiver o código e a lista consegue descobrir o sorteio inteiro.</small>
       </div>
       <p class="nota" id="apelido-sorteio"></p>
       <p class="progresso" id="progresso"></p>
