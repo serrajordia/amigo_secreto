@@ -233,10 +233,19 @@
       <h2 id="t4">Revisar e sortear</h2>
       <div id="resumo" class="resumo"></div>
       <div id="status-sorteio" class="aviso" role="status" aria-live="polite" hidden></div>
+      <label class="check"><input type="checkbox" id="reprodutivel" checked> <span>Gerar um <strong>código de recuperação</strong> (sorteio reprodutível)</span>
+        <small>Com o código e esta mesma lista, dá para gerar de novo o link de quem perder, mesmo depois de fechar a página. Guarde-o só com você: quem tiver o código e a lista consegue descobrir o sorteio inteiro.</small></label>
       <label class="check"><input type="checkbox" id="confirmo"> Conferi os nomes. O sorteio será feito agora e você receberá um link para cada pessoa.</label>
       <div class="linha-botoes">
         <button type="button" class="btn btn-grande" id="sortear" disabled>🎲 Sortear e gerar os links</button>
       </div>
+      <details class="tutorial" id="recuperar">
+        <summary><strong>Já sorteou e alguém perdeu o link?</strong> Recupere com o código</summary>
+        <p>Deixe os participantes (na <strong>mesma ordem</strong>), os grupos e as regras exatamente como no dia do sorteio. Os dados do evento podem ter mudado: os links refeitos já saem atualizados. O resultado é o mesmo do sorteio original.</p>
+        <label>Código de recuperação <input id="rec-codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="1-XXXX-XXXX-XXXX-XXXX-XXXX" maxlength="40"></label>
+        <div class="linha-botoes"><button type="button" class="btn" id="rec-ir">Refazer os links deste sorteio</button></div>
+        <div id="rec-status" class="aviso" role="status" aria-live="polite" hidden></div>
+      </details>
       <div class="nav-etapa"><button type="button" class="btn btn-sec" data-ir="3">← Voltar</button><span></span></div>
     </section>
 
@@ -245,8 +254,14 @@
       <h2 id="t5">Sorteio feito! Agora envie os links 🎉</h2>
       <div class="aviso alerta">
         <strong>Envie cada link só para a pessoa certa, individualmente</strong>, nunca em grupo.
-        Quem abrir o link vê quem aquela pessoa tirou. Os links só existem nesta aba: <strong>não feche a página</strong> antes de enviar todos.
+        Quem abrir o link vê quem aquela pessoa tirou. <span id="aviso-aba">Os links só existem nesta aba: <strong>não feche a página</strong> antes de enviar todos.</span>
       </div>
+      <div id="status-envio" class="aviso" role="status" aria-live="polite" hidden></div>
+      <div class="aviso info caixa-codigo" id="caixa-codigo" hidden>
+        <p><strong>Código de recuperação:</strong> <code id="codigo"></code> <button type="button" class="btn btn-sec btn-pequeno" id="copiar-codigo">Copiar código</button></p>
+        <small>Anote em lugar seguro, só com você. Se alguém perder o link (ou esta aba fechar), volte à etapa 4 com a mesma lista e use <em>Recupere com o código</em>. Quem tiver o código e a lista consegue descobrir o sorteio inteiro.</small>
+      </div>
+      <p class="nota" id="apelido-sorteio"></p>
       <p class="progresso" id="progresso"></p>
       <label class="opcao-ama"><input type="checkbox" id="inclui-ama" checked> Incluir na mensagem um convite curto para ativar a doação da Nota Fiscal Paulista para a AMA (você pode desmarcar)</label>
       <ul class="envios" id="envios"></ul>

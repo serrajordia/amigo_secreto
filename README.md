@@ -15,7 +15,7 @@ A página abre perguntando **como enviar o resultado**. O sorteio e as regras s�
 | Como o resultado chega | Um **link secreto por pessoa** (botões de WhatsApp, e-mail, copiar, compartilhar) | **E-mail** pelo seu Gmail, automático |
 | E-mail dos participantes | Opcional | Obrigatório |
 | Onde funciona | Qualquer navegador, inclusive celular | Computador (o menu de script não aparece no app do celular) |
-| Sigilo do organizador | Vê só a lista de nomes; o resultado só existe dentro dos links. Se abrir/decodificar o link de alguém, vê o resultado dele | O sorteio roda no Google e **nada é gravado**: nem o organizador vê |
+| Sigilo do organizador | Vê só a lista de nomes; o resultado só existe dentro dos links. Se abrir/decodificar o link de alguém, vê o resultado dele | O sorteio roda no Google e **nada é gravado**: nem o organizador vê (com o código de recuperação, quem tiver código + planilha consegue refazer) |
 | Esforço no envio | Um toque por pessoa | Um clique para todos |
 | Custo | R$ 0 | R$ 0 (até ~100 e-mails/dia) |
 
@@ -23,15 +23,29 @@ A página abre perguntando **como enviar o resultado**. O sorteio e as regras s�
 1. **Evento:** nome, data da festa, local, valor sugerido e recado (aparecem para cada pessoa).
 2. **Participantes:** importe uma planilha **Excel (.xlsx/.xls) ou CSV** (colunas `nome`, `email`, `grupo`; [modelo](docs/modelo_participantes.csv); só `nome` é obrigatório) ou adicione um a um. Dá para editar clicando na tabela.
 3. **Regras:** chaves liga/desliga (*ninguém tira alguém do próprio grupo*, *ninguém tira a si mesmo*, *corrente única*), com aviso na hora se o sorteio for impossível.
-4. **Sortear:** gera um link por pessoa. O resultado de cada um vai **dentro do endereço, depois do `#`**, parte que nem o GitHub Pages recebe. Não existe banco de dados.
-5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links só existem na aba aberta; **não feche a página** antes de enviar todos. Quem recebe abre o link, toca em **Revelar** e vê quem tirou, com data, local e valor.
+4. **Sortear:** gera um link por pessoa. O resultado de cada um vai **dentro do endereço, depois do `#`**, parte que nem o GitHub Pages recebe. Não existe banco de dados. Por padrão também gera um **código de recuperação** (veja abaixo; dá para desmarcar).
+5. **Enviar:** botões por pessoa (WhatsApp, e-mail, copiar, compartilhar) e um marcador de "enviado". Os links ficam só na aba aberta; sem o código de recuperação, **não feche a página** antes de enviar todos. Quem recebe abre o link, toca em **Revelar** e vê quem tirou, com data, local, valor e o apelido do sorteio (ex.: *Sorteio #4HMP*).
+
+### 🔁 Sorteio reprodutível (código de recuperação)
+Serve para quando alguém perde o link ou o e-mail ("esqueci quem tirei"). O código tem o formato `1-XXXX-XXXX-XXXX-XXXX-XXXX`:
+
+- `1` é a **versão** do algoritmo. A v1 fica congelada (vetores fixos em [tests/vetores_codigo.json](tests/vetores_codigo.json)); qualquer mudança futura no sorteio vira v2.
+- Os 16 caracteres seguintes são um **segredo aleatório** (80 bits) gerado pelo site. Ele não é escolhido pelo organizador, para não poder ser adivinhado.
+- Os 4 últimos são uma **conferência** (hash do segredo + lista + regras): detectam erro de digitação e lista alterada.
+- Os números aleatórios saem de `SHA-256("amigo-secreto/v1/<segredo>/<contador>")`. O mesmo código com a **mesma lista** (mesma ordem, grupos e regras) dá o mesmo resultado no site, no Apps Script e no Python. Nomes podem mudar de acento, maiúsculas ou espaços; e-mails e dados do evento podem mudar à vontade.
+
+**Recuperar:** no modo rápido, etapa 4 → *Recupere com o código* (refaz a lista de links, com o mesmo resultado). No modo e-mail, menu **↻ Reenviar o e-mail de uma pessoa** (reenvia só para ela; dá para corrigir o e-mail na aba antes). No Python, `--codigo 1-… --so "Ana"`.
+
+> ⚠️ Quem tem o **código e a lista** consegue refazer o sorteio inteiro. Guarde o código só com você. Se preferir um sorteio sem volta, desmarque a opção (site) ou responda *Não* (planilha).
+
+O apelido (`Sorteio #4HMP`) é derivado do código e aparece nos links e e-mails. Se um sorteio for refeito, os links antigos **continuam abrindo**, mas mostram o resultado antigo; o apelido permite avisar qual sorteio vale.
 
 > ⚠️ O link é *codificação*, não criptografia: quem tiver o link lê o resultado daquela pessoa. Mande cada link só ao dono, individualmente, nunca em grupo.
 
 ### ✉️ Modo e-mail (planilha Google)
 1. Abra o link da planilha modelo e clique em **Fazer uma cópia** (a cópia, com o script dentro, vai para o seu Drive).
 2. Preencha as abas **Participantes** e **Evento e regras**.
-3. Menu **🎁 Amigo Secreto**: *Verificar* → *Enviar e-mail de teste para mim* → *Sortear e enviar e-mails*.
+3. Menu **🎁 Amigo Secreto**: *Verificar* → *Enviar e-mail de teste para mim* → *Sortear e enviar e-mails*. Ao sortear, a planilha pergunta se você quer um **código de recuperação** (para reenviar depois o e-mail de quem perder).
 4. Na primeira vez o Google mostra "app não verificado" (é o seu próprio script): *Avançado → Acessar → Permitir*. O script só pode enviar e-mail e acessar aquela planilha (`@OnlyCurrentDoc`).
 
 #### Criar o modelo (só o dono do projeto, uma vez)
@@ -52,6 +66,7 @@ python -m amigo_secreto sortear participantes.csv --festa "24/12 20h" --valor "R
 ```
 
 Opções: `--permitir-mesmo-grupo`, `--permitir-autossorteio`, `--corrente`, `--evento`, `--local`, `--mensagem`, `--organizador`.
+Sorteio reprodutível: `--gerar-codigo` mostra um código de recuperação; `--codigo 1-… --so "Ana"` refaz o mesmo sorteio e reenvia só para a Ana.
 Ou abra o [notebook](Amigo%20Secreto.ipynb).
 
 ### Onde ficam as chaves

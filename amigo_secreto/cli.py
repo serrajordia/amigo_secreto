@@ -4,6 +4,8 @@ Exemplos::
 
     python -m amigo_secreto sortear participantes.csv --simular
     python -m amigo_secreto sortear participantes.csv --festa "24/12 19h" --valor "R$ 100"
+    python -m amigo_secreto sortear participantes.csv --gerar-codigo        # sorteio reprodutível
+    python -m amigo_secreto sortear participantes.csv --codigo 1-XXXX-… --so "Ana"   # reenvia só para a Ana
     python -m amigo_secreto testar-email
     python -m amigo_secreto configurar
 """
@@ -18,7 +20,16 @@ import sys
 import unicodedata
 from pathlib import Path
 
-from .sorteio import Participante, Regras, SorteioImpossivel, sortear, verificar
+from .sorteio import (
+    CodigoInvalido,
+    Participante,
+    Regras,
+    SorteioImpossivel,
+    ler_codigo,
+    novo_codigo,
+    sortear,
+    verificar,
+)
 
 COLUNAS = {
     "nome": {"nome", "name", "participante"},
@@ -80,14 +91,35 @@ def _cmd_sortear(a) -> int:
             print("✗", erro)
         return 2
 
+    if a.so and not a.codigo:
+        print("✗ --so só faz sentido com --codigo (refazer um sorteio já feito).")
+        return 2
+    somente = None
+    if a.so:
+        alvo = _normaliza(a.so)
+        somente = [i for i, p in enumerate(ps) if alvo in (_normaliza(p.nome), _normaliza(p.email))]
+        if len(somente) != 1:
+            print(f"✗ '{a.so}' corresponde a {len(somente)} participantes. Use o nome completo ou o e-mail.")
+            return 2
+
+    codigo = None
     try:
-        destino = sortear(ps, regras)
-    except SorteioImpossivel as e:
+        if a.codigo or a.gerar_codigo:
+            codigo = ler_codigo(a.codigo or novo_codigo(ps, regras), ps, regras)
+        destino = sortear(ps, regras, codigo.gerador() if codigo else None)
+    except (SorteioImpossivel, CodigoInvalido) as e:
         print("✗", e)
         return 2
 
     grupos = len({p.grupo for p in ps if p.grupo})
     print(f"✓ Sorteio válido para {len(ps)} participantes em {grupos} grupo(s). Resultado não exibido.")
+    if codigo:
+        print(f"  Sorteio #{codigo.apelido}")
+        if a.gerar_codigo:
+            print(f"  Código de recuperação: {codigo.codigo}")
+            print("  Guarde-o só com você. Com ele e esta mesma lista (mesma ordem, grupos e regras),")
+            print("  dá para reenviar o e-mail de quem perder: --codigo <código> --so <nome>.")
+            print("  Quem tiver o código e a lista consegue descobrir o sorteio inteiro.")
     if a.simular:
         print("Modo simulação: nenhum e-mail enviado.")
         return 0
@@ -96,12 +128,16 @@ def _cmd_sortear(a) -> int:
     from .envio import Evento, enviar_resultados
 
     evento = Evento(a.evento, a.festa, a.local, a.valor, a.mensagem, a.organizador)
+    n_envios = len(somente) if somente is not None else len(ps)
     if not a.sim:
-        resp = input(f"Enviar {len(ps)} e-mails agora? [s/N] ").strip().lower()
+        resp = input(f"Enviar {n_envios} e-mail(s) agora? [s/N] ").strip().lower()
         if resp not in {"s", "sim", "y"}:
             print("Cancelado. Nada foi enviado.")
             return 1
-    n = enviar_resultados(carregar_credenciais(), ps, destino, evento)
+    n = enviar_resultados(
+        carregar_credenciais(), ps, destino, evento,
+        apelido=codigo.apelido if codigo else "", somente=somente,
+    )
     print(f"✓ {n} e-mails enviados.")
     return 0
 
@@ -139,6 +175,9 @@ def main(argv=None) -> int:
     s.add_argument("--corrente", action="store_true", help="forma uma única corrente A→B→…→A")
     s.add_argument("--simular", action="store_true", help="só verifica, não envia nada")
     s.add_argument("--sim", action="store_true", help="não pede confirmação antes de enviar")
+    s.add_argument("--gerar-codigo", action="store_true", help="sorteio reprodutível: mostra um código de recuperação")
+    s.add_argument("--codigo", default=None, help="refaz o sorteio de um código de recuperação (mesma lista)")
+    s.add_argument("--so", default=None, help="com --codigo: envia só para esta pessoa (nome ou e-mail)")
     s.add_argument("--evento", default="Amigo Secreto")
     s.add_argument("--festa", default="", help="data/hora da festa")
     s.add_argument("--local", default="")

@@ -306,6 +306,10 @@ textarea { resize: vertical; }
 .detalhes dd { margin: 0; font-weight: 600; }
 .recado { white-space: pre-line; }
 .segredo { color: var(--texto-suave); }
+.apelido { color: var(--texto-suave); font-size: .85rem; letter-spacing: .04em; }
+.caixa-codigo p { margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.caixa-codigo code { font-size: 1.05rem; font-weight: 700; letter-spacing: .04em; }
+#rec-codigo { font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; }
 
 /* Parceria AMA ---------------------------------------------------------- */
 :root { --ama: #003598; }

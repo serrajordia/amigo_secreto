@@ -193,3 +193,62 @@ def test_lista_grande_sem_estourar_recursao():
     ps = lista([300, 300])  # só o fallback resolve; antes estourava a recursão
     d = sortear(ps, Regras(), exigir_email=False)
     checa(ps, d, Regras())
+
+
+# ------------------------------------------------------------------ sorteio reprodutível
+def _vetores():
+    import json
+
+    return json.loads((RAIZ / "tests" / "vetores_codigo.json").read_text(encoding="utf-8"))
+
+
+def _regras_js(r):
+    return Regras(
+        permitir_autossorteio=bool(r.get("permitirAutossorteio")),
+        permitir_mesmo_grupo=bool(r.get("permitirMesmoGrupo")),
+        corrente_unica=bool(r.get("correnteUnica")),
+    )
+
+
+@pytest.mark.parametrize("v", _vetores(), ids=lambda v: v["nome"])
+def test_codigo_da_o_mesmo_resultado_que_o_javascript(v):
+    from amigo_secreto.sorteio import ler_codigo
+
+    ps = [Participante(p["nome"], p["email"], p["grupo"]) for p in v["participantes"]]
+    regras = _regras_js(v["regras"])
+    c = ler_codigo(v["codigo"], ps, regras)
+    assert c.apelido == v["apelido"]
+    assert sortear(ps, regras, c.gerador(), exigir_email=False) == v["destino"]
+
+
+def test_codigo_novo_reproduz_e_confere_a_lista():
+    from amigo_secreto.sorteio import CodigoInvalido, ler_codigo, novo_codigo
+
+    ps = lista([3, 3, 2])
+    cod = novo_codigo(ps)
+    a = sortear(ps, Regras(), ler_codigo(cod, ps).gerador(), exigir_email=False)
+    b = sortear(ps, Regras(), ler_codigo(cod.lower().replace("-", " "), ps).gerador(), exigir_email=False)
+    assert a == b
+    checa(ps, a, Regras())
+    with pytest.raises(CodigoInvalido):
+        ler_codigo(cod, [ps[1], ps[0], *ps[2:]])
+    with pytest.raises(CodigoInvalido):
+        ler_codigo(cod, ps, Regras(corrente_unica=True))
+    with pytest.raises(CodigoInvalido):
+        ler_codigo("1-AAAA", ps)
+
+
+def test_cli_reproduz_com_codigo(tmp_path, capsys):
+    from amigo_secreto.cli import main
+
+    f = RAIZ / "docs" / "modelo_participantes.csv"
+    assert main(["sortear", str(f), "--simular", "--gerar-codigo"]) == 0
+    saida = capsys.readouterr().out
+    import re
+
+    cod = re.search(r"1(-[0-9A-Z]{4}){5}", saida).group(0)
+    apelido = re.search(r"Sorteio #(\w{4})", saida).group(1)
+    assert main(["sortear", str(f), "--simular", "--codigo", cod]) == 0
+    assert f"Sorteio #{apelido}" in capsys.readouterr().out
+    assert main(["sortear", str(f), "--simular", "--codigo", cod, "--permitir-mesmo-grupo"]) == 2
+    assert main(["sortear", str(f), "--simular", "--so", "Ana"]) == 2  # --so exige --codigo

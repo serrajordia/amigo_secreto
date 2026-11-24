@@ -8,7 +8,7 @@ const vm = require('vm');
 
 const dir = path.join(__dirname, '..', 'docs', 'apps-script');
 
-function ambiente({ participantes, regras = [true, true, false], cota = 100 }) {
+function ambiente({ participantes, regras = [true, true, false], cota = 100, respostas = [], querCodigo = true }) {
   const emails = [], alertas = [];
   // aba Participantes: linha 1 = cabeçalho
   const aba1 = [['Nome', 'E-mail', 'Grupo']].concat(participantes);
@@ -27,9 +27,16 @@ function ambiente({ participantes, regras = [true, true, false], cota = 100 }) {
   });
   const abas = { Participantes: aba(aba1), 'Evento e regras': aba(aba2) };
   const ui = {
-    Button: { YES: 'YES', NO: 'NO' },
-    ButtonSet: { OK: 'OK', YES_NO: 'YES_NO' },
-    alert: (titulo, msg) => { alertas.push({ titulo, msg: msg || '' }); return 'YES'; },
+    Button: { YES: 'YES', NO: 'NO', OK: 'OK', CANCEL: 'CANCEL' },
+    ButtonSet: { OK: 'OK', YES_NO: 'YES_NO', OK_CANCEL: 'OK_CANCEL' },
+    alert: (titulo, msg) => {
+      alertas.push({ titulo, msg: msg || '' });
+      return titulo === 'Código de recuperação' && !querCodigo ? 'NO' : 'YES';
+    },
+    prompt: (titulo) => {
+      const r = respostas.shift();
+      return { getSelectedButton: () => (r == null ? 'CANCEL' : 'OK'), getResponseText: () => r || '' };
+    },
   };
   const ctx = {
     console,
@@ -37,6 +44,7 @@ function ambiente({ participantes, regras = [true, true, false], cota = 100 }) {
     MailApp: { getRemainingDailyQuota: () => cota - emails.length, sendEmail: (o) => emails.push(o) },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'org@exemplo.com' }) },
     LockService: { getDocumentLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    Utilities: { getUuid: () => require('crypto').randomUUID() },
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(dir, 'Sorteio.gs'), 'utf8') + '\n' + fs.readFileSync(path.join(dir, 'Planilha.gs'), 'utf8'), ctx);
@@ -66,7 +74,7 @@ test('sorteia, respeita grupos e nunca revela o resultado nas mensagens da tela'
     assert.strictEqual(Object.keys(tirou).length, 6, 'cada pessoa é tirada exatamente uma vez');
     const tela = alertas.map((a) => a.titulo + a.msg).join(' ');
     FAMILIAS.forEach((p) => assert.ok(!tela.includes('*** ' + p[0]), 'tela não revela resultado'));
-    assert.match(alertas.at(-1).titulo, /Sorteio feito/);
+    assert.match(alertas.at(-1).titulo, /Sorteio #\w{4} feito/);
   }
 });
 
@@ -113,4 +121,51 @@ test('verificar e teste de e-mail', () => {
   assert.match(a.alertas[0].msg, /Sorteio possível com 6/);
   a.ctx.menuTeste();
   assert.strictEqual(a.emails.at(-1).to, 'org@exemplo.com');
+});
+
+function quemTirou(emails, pessoas) {
+  const r = {};
+  for (const m of emails) r[pessoas.find((p) => p[1] === m.to)[0]] = pessoas.find((p) => m.body.includes('*** ' + p[0] + ' ***'))[0];
+  return r;
+}
+
+test('código de recuperação: reenviar refaz o mesmo resultado só para a pessoa pedida', () => {
+  const a = ambiente({ participantes: FAMILIAS });
+  a.ctx.menuSortear();
+  const final = a.alertas.at(-1);
+  const codigo = final.msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}/)[0];
+  const apelido = final.titulo.match(/#(\w{4})/)[1];
+  const original = quemTirou(a.emails, FAMILIAS);
+  assert.ok(a.emails.every((m) => m.body.includes('Sorteio #' + apelido)));
+
+  // outra execução (outro dia), mesma planilha; o e-mail da Dani foi corrigido
+  const corrigida = FAMILIAS.map((p) => (p[0] === 'Dani' ? ['Dani', 'dani.nova@ex.com', p[2]] : p));
+  const b = ambiente({ participantes: corrigida, respostas: [codigo.toLowerCase(), 'dani'] });
+  b.ctx.menuReenviar();
+  assert.strictEqual(b.emails.length, 1);
+  assert.strictEqual(b.emails[0].to, 'dani.nova@ex.com');
+  assert.ok(b.emails[0].body.includes('*** ' + original.Dani + ' ***'));
+  assert.match(b.alertas.at(-1).titulo, /reenviado/);
+  assert.ok(!b.alertas.map((x) => x.msg).join(' ').includes(original.Dani + ' ***'));
+});
+
+test('reenviar recusa código errado ou lista alterada', () => {
+  const a = ambiente({ participantes: FAMILIAS });
+  a.ctx.menuSortear();
+  const codigo = a.alertas.at(-1).msg.match(/1-[0-9A-Z]{4}(-[0-9A-Z]{4}){4}/)[0];
+  const trocada = [FAMILIAS[1], FAMILIAS[0]].concat(FAMILIAS.slice(2));
+  const b = ambiente({ participantes: trocada, respostas: [codigo, 'Ana'] });
+  b.ctx.menuReenviar();
+  assert.strictEqual(b.emails.length, 0);
+  assert.match(b.alertas.at(-1).titulo, /não confere/);
+  const c = ambiente({ participantes: FAMILIAS, respostas: ['1-AAAA-BBBB-CCCC-DDDD-EEEE', 'Ana'] });
+  c.ctx.menuReenviar();
+  assert.strictEqual(c.emails.length, 0);
+});
+
+test('sem código: o alerta final não mostra código e reenviar não tem o que usar', () => {
+  const a = ambiente({ participantes: FAMILIAS, querCodigo: false });
+  a.ctx.menuSortear();
+  assert.strictEqual(a.emails.length, 6);
+  assert.ok(!/1-[0-9A-Z]{4}-/.test(a.alertas.at(-1).msg));
 });

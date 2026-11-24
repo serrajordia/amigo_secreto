@@ -26,13 +26,14 @@ var Link = (function () {
 
   function corta(s, max) { return String(s == null ? '' : s).trim().slice(0, max); }
 
-  /** base: endereço da página de revelação (ex.: https://…/ver.html). */
-  function criar(base, quem, tirou, evento) {
+  /** base: endereço da página de revelação (ex.: https://…/ver.html). apelido: "#AB12" do sorteio (opcional). */
+  function criar(base, quem, tirou, evento, apelido) {
     evento = evento || {};
     var dados = {
       v: 1,
       p: corta(quem, 80),
       t: corta(tirou, 80),
+      s: corta(apelido, 8),
       e: {
         n: corta(evento.nome, 80),
         d: corta(evento.dataFesta, 80),
@@ -52,7 +53,7 @@ var Link = (function () {
       if (!d || d.v !== 1 || typeof d.p !== 'string' || typeof d.t !== 'string' || !d.t) return null;
       var e = d.e || {};
       return {
-        quem: d.p, tirou: d.t,
+        quem: d.p, tirou: d.t, apelido: typeof d.s === 'string' ? d.s : '',
         evento: { nome: e.n || '', dataFesta: e.d || '', local: e.l || '', valor: e.v || '', organizador: e.o || '', mensagem: e.m || '' }
       };
     } catch (err) {

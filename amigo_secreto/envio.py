@@ -39,7 +39,9 @@ def _linhas_evento(ev: Evento) -> list[tuple[str, str]]:
     ]
 
 
-def montar_mensagem(remetente: str, quem: Participante, tirou: Participante, ev: Evento) -> EmailMessage:
+def montar_mensagem(
+    remetente: str, quem: Participante, tirou: Participante, ev: Evento, apelido: str = ""
+) -> EmailMessage:
     msg = EmailMessage()
     msg["From"] = f"{ev.nome} <{remetente}>"
     msg["To"] = quem.email
@@ -50,6 +52,8 @@ def montar_mensagem(remetente: str, quem: Participante, tirou: Participante, ev:
     if ev.mensagem:
         texto += ["", ev.mensagem]
     texto += ["", "Guarde segredo! 🤫"]
+    if apelido:
+        texto += ["", f"Sorteio #{apelido}"]
     msg.set_content("\n".join(texto))
 
     detalhes = "".join(
@@ -62,6 +66,7 @@ def montar_mensagem(remetente: str, quem: Participante, tirou: Participante, ev:
         if ev.mensagem
         else ""
     )
+    marca = f" · Sorteio #{escape(apelido)}" if apelido else ""
     msg.add_alternative(
         f"""<div style="font-family:Arial,Helvetica,sans-serif;background:#f2f6fa;padding:24px">
   <div style="max-width:520px;margin:auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #dde5ee">
@@ -74,7 +79,7 @@ def montar_mensagem(remetente: str, quem: Participante, tirou: Participante, ev:
       <p style="margin:12px 0 20px;font-size:30px;font-weight:800;color:{AZUL}">{escape(tirou.nome)}</p>
       <table style="border-collapse:collapse;font-size:14px">{detalhes}</table>
       {recado}
-      <p style="margin:24px 0 0;color:{CINZA};font-size:13px">Guarde segredo! 🤫</p>
+      <p style="margin:24px 0 0;color:{CINZA};font-size:13px">Guarde segredo! 🤫{marca}</p>
     </div>
   </div>
 </div>""",
@@ -89,13 +94,19 @@ def enviar_resultados(
     destino: Sequence[int],
     evento: Evento,
     log=print,
+    apelido: str = "",
+    somente: Sequence[int] | None = None,
 ) -> int:
-    """Envia um e-mail por participante. O log mostra só quem recebeu, nunca quem tirou quem."""
+    """Envia um e-mail por participante (ou só para os índices em ``somente``).
+
+    O log mostra só quem recebeu, nunca quem tirou quem."""
     enviados = 0
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORTA) as smtp:
         smtp.login(cred.usuario, cred.senha_app)
         for i, j in enumerate(destino):
-            smtp.send_message(montar_mensagem(cred.usuario, ps[i], ps[j], evento))
+            if somente is not None and i not in somente:
+                continue
+            smtp.send_message(montar_mensagem(cred.usuario, ps[i], ps[j], evento, apelido))
             enviados += 1
             log(f"✓ e-mail enviado para {ps[i].nome} <{ps[i].email}>")
     return enviados

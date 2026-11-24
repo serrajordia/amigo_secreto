@@ -26,3 +26,12 @@ test('o endereço não contém o resultado em texto puro', () => {
   const url = Link.criar('https://x/ver.html', 'Ana', 'Bruno', {});
   assert.ok(!url.includes('Bruno'));
 });
+
+test('apelido do sorteio vai no link; links antigos (sem apelido) continuam funcionando', () => {
+  const url = Link.criar('https://x/ver.html', 'Ana', 'Bruno', {}, 'AB12');
+  assert.strictEqual(Link.ler(url.split('#')[1]).apelido, 'AB12');
+  const antigo = Buffer.from(JSON.stringify({ v: 1, p: 'Ana', t: 'Bruno', e: {} })).toString('base64url');
+  const d = Link.ler(antigo);
+  assert.strictEqual(d.tirou, 'Bruno');
+  assert.strictEqual(d.apelido, '');
+});

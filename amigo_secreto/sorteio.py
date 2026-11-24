@@ -17,8 +17,10 @@ Ideia geral
 
 from __future__ import annotations
 
+import hashlib
 import re
 import secrets
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Sequence
 
@@ -242,3 +244,111 @@ def sortear(
     if destino is None:
         raise SorteioImpossivel("Com essas regras não existe sorteio possível.")
     return destino
+
+
+# ---------------------------------------------------------------------------------------------
+# Sorteio reprodutível ("código de recuperação"), versão 1 — mesma lógica de docs/js/sorteio.js.
+#
+# Código: 1-SSSS-SSSS-SSSS-SSSS-CCCC
+#   1     versão (o algoritmo da v1 fica congelado; mudanças futuras viram v2)
+#   S×16  segredo aleatório (80 bits, alfabeto Crockford base32)
+#   C×4   conferência = hash(segredo + lista + regras): pega erro de digitação e lista alterada
+# Números aleatórios: SHA-256("amigo-secreto/v1/<segredo>/<contador>"), 8 palavras de 32 bits por bloco.
+# Com o mesmo código e a mesma lista (mesma ordem, grupos e regras), o resultado é idêntico no
+# navegador, no Apps Script e aqui. Quem tem o código E a lista consegue refazer o sorteio inteiro.
+# ---------------------------------------------------------------------------------------------
+
+ALFABETO = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+_CODIGO_RE = re.compile(r"^1[0-9A-HJKMNP-TV-Z]{20}$")
+
+
+class CodigoInvalido(ValueError):
+    pass
+
+
+def _hash(txt: str) -> bytes:
+    return hashlib.sha256(txt.encode("utf-8")).digest()
+
+
+def _base32(h: bytes, n: int) -> str:
+    v = int.from_bytes(h, "big")
+    total = len(h) * 8
+    return "".join(ALFABETO[(v >> (total - 5 * (i + 1))) & 31] for i in range(n))
+
+
+def _canonico(s: str) -> str:
+    s = re.sub("[\u0300-\u036f]", "", unicodedata.normalize("NFKD", s or ""))
+    return re.sub(r"\s+", " ", s.lower()).strip()
+
+
+def _conferencia(segredo: str, ps: Sequence[Participante], regras: Regras) -> str:
+    bits = "".join(
+        "1" if b else "0"
+        for b in (
+            regras.permitir_autossorteio and regras.permitir_mesmo_grupo,
+            regras.permitir_mesmo_grupo,
+            regras.corrente_unica,
+        )
+    )
+    lista = "\u001e".join(_canonico(p.nome) + "\u001f" + p.grupo.strip().lower() for p in ps)
+    return _base32(_hash(f"amigo-secreto/v1/conferencia/{segredo}|{bits}|{lista}"), 4)
+
+
+def _formata(c: str) -> str:
+    return c[0] + "-" + "-".join(c[k : k + 4] for k in range(1, 21, 4))
+
+
+def _normaliza_codigo(codigo: str) -> str:
+    c = re.sub(r"[\s\-–—.]", "", str(codigo or "").upper())
+    return c.replace("O", "0").replace("I", "1").replace("L", "1").replace("U", "V")
+
+
+class GeradorReprodutivel:
+    """Gerador determinístico (SHA-256 em modo contador) com ``random()`` e ``shuffle()``
+    idênticos aos da versão JavaScript (Fisher-Yates com ``floor(random() * (i + 1))``)."""
+
+    def __init__(self, segredo: str):
+        self._segredo = segredo
+        self._contador = 0
+        self._palavras: list[int] = []
+
+    def random(self) -> float:
+        if not self._palavras:
+            h = _hash(f"amigo-secreto/v1/{self._segredo}/{self._contador}")
+            self._contador += 1
+            self._palavras = [int.from_bytes(h[k : k + 4], "big") for k in range(28, -1, -4)]
+        return self._palavras.pop() / 4294967296
+
+    def shuffle(self, v: list) -> None:
+        for i in range(len(v) - 1, 0, -1):
+            j = int(self.random() * (i + 1))
+            v[i], v[j] = v[j], v[i]
+
+
+@dataclass(frozen=True)
+class CodigoLido:
+    codigo: str
+    apelido: str  # curto e público (vai no e-mail/link): distingue um sorteio do outro
+    segredo: str
+
+    def gerador(self) -> GeradorReprodutivel:
+        return GeradorReprodutivel(self.segredo)
+
+
+def novo_codigo(ps: Sequence[Participante], regras: Regras = Regras()) -> str:
+    segredo = "".join(secrets.choice(ALFABETO) for _ in range(16))
+    return _formata("1" + segredo + _conferencia(segredo, ps, regras))
+
+
+def ler_codigo(codigo: str, ps: Sequence[Participante], regras: Regras = Regras()) -> CodigoLido:
+    """Confere o código com a lista e as regras. Lança ``CodigoInvalido`` se não conferir."""
+    c = _normaliza_codigo(codigo)
+    if not _CODIGO_RE.match(c):
+        raise CodigoInvalido("Código incompleto ou inválido. O formato é 1-XXXX-XXXX-XXXX-XXXX-XXXX.")
+    segredo = c[1:17]
+    if c[17:] != _conferencia(segredo, ps, regras):
+        raise CodigoInvalido(
+            "Este código não confere com a lista atual. Confira se o código foi digitado certo e se os "
+            "participantes (na mesma ordem), os grupos e as regras estão exatamente como no dia do sorteio."
+        )
+    return CodigoLido(_formata(c), _base32(_hash(f"amigo-secreto/v1/apelido/{segredo}"), 4), segredo)

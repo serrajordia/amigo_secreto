@@ -26,6 +26,7 @@
       dl.appendChild(dt); dl.appendChild(dd);
     });
   $('#recado').textContent = ev.mensagem;
+  if (d.apelido) { $('#apelido').textContent = 'Sorteio #' + d.apelido; $('#apelido').hidden = false; }
 
   /* convite da AMA: lembra (só neste navegador) quem já ativou, para não repetir */
   function convite(ativou) { $('#convite').hidden = ativou; $('#convite-ok').hidden = !ativou; }

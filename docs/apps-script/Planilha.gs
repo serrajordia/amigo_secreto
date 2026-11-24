@@ -8,7 +8,9 @@
  * Arquivos do projeto (cole os dois no editor de scripts da planilha):
  *   Planilha.gs  (este)  +  Sorteio.gs (algoritmo, igual ao usado pelo site)
  *
- * Privacidade: o resultado do sorteio nunca é gravado na planilha nem em log.
+ * Privacidade: o resultado do sorteio nunca é gravado na planilha nem em log. Se o organizador
+ * pedir um código de recuperação, o sorteio pode ser refeito (código + mesma lista) para
+ * reenviar o e-mail de quem perder; sem o código, ninguém consegue refazê-lo.
  * Permissões pedidas ao Google: enviar e-mail e ver/editar SÓ esta planilha.
  *
  * @OnlyCurrentDoc
@@ -37,6 +39,8 @@ function onOpen() {
     .addItem('3. Enviar e-mail de teste para mim', 'menuTeste')
     .addSeparator()
     .addItem('🎲 4. Sortear e enviar e-mails', 'menuSortear')
+    .addSeparator()
+    .addItem('↻ Reenviar o e-mail de uma pessoa (com o código)', 'menuReenviar')
     .addToUi();
 }
 
@@ -85,7 +89,7 @@ function preparar() {
     [''],
     ['Na primeira vez o Google pede autorização e mostra "app não verificado": clique em Avançado → Acessar (não seguro) → Permitir.'],
     ['Os e-mails saem do SEU Gmail (limite de uns 100 por dia). O menu só aparece no computador, não no aplicativo do celular.'],
-    ['Nada do resultado é gravado nesta planilha.'],
+    ['Nada do resultado é gravado nesta planilha. Se, ao sortear, você pedir o código de recuperação, guarde-o: com ele dá para reenviar o e-mail de quem perder (menu "Reenviar").'],
     ['Feito com o Amigo Secreto da Mestre dos Dados — github.com/serrajordia/amigo_secreto']
   ]);
   a.getRange('A1').setFontSize(16).setFontWeight('bold').setFontColor(COR.azul);
@@ -192,18 +196,36 @@ function menuSortear() {
     if (v.avisos.length) confirmacao += '\n\nAtenção:\n• ' + v.avisos.join('\n• ');
     if (ui.alert('Confirmar sorteio', confirmacao, ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
 
-    var destino = Sorteio.sortear(d.participantes, d.regras);
+    var querCodigo = ui.alert('Código de recuperação',
+      'Quer um código de recuperação?\n\nCom ele e esta mesma lista (mesma ordem, grupos e regras), dá para reenviar ' +
+      'o e-mail de quem perder, pelo menu "Reenviar". Mas quem tiver o código e a planilha consegue descobrir o sorteio inteiro.\n\n' +
+      'Sim = gerar o código · Não = sorteio sem volta (ninguém consegue refazer)', ui.ButtonSet.YES_NO) === ui.Button.YES;
+    var codigo = '', apelido, rnd;
+    if (querCodigo) {
+      codigo = Sorteio.novoCodigo(d.participantes, d.regras);
+      var c = Sorteio.lerCodigo(codigo, d.participantes, d.regras);
+      rnd = c.rnd; apelido = c.apelido;
+    } else {
+      apelido = Sorteio.apelidoAleatorio();
+    }
+
+    var destino = Sorteio.sortear(d.participantes, d.regras, rnd);
     var falhas = [];
     for (var i = 0; i < n; i++) {
-      try { enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento); }
+      try { enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, apelido); }
       catch (err) { falhas.push(d.participantes[i].nome); }
     }
+    var textoCodigo = codigo
+      ? '\n\nCÓDIGO DE RECUPERAÇÃO (anote agora, só com você):\n' + codigo + '\n\nNão mude a ordem, os grupos nem as regras na planilha: o código só funciona com a lista igual.'
+      : '';
     if (falhas.length) {
       ui.alert('Alguns e-mails falharam',
-        'Não consegui enviar para: ' + falhas.join(', ') + '.\n\nRefaça o sorteio para TODOS e avise o pessoal para ignorar o e-mail anterior.', ui.ButtonSet.OK);
+        'Não consegui enviar para: ' + falhas.join(', ') + '.\n\n' +
+        (codigo ? 'Corrija o e-mail dessas pessoas na aba (o e-mail não muda o sorteio) e use o menu "Reenviar" com o código abaixo.'
+          : 'Refaça o sorteio para TODOS e avise o pessoal para ignorar o e-mail anterior.') + textoCodigo, ui.ButtonSet.OK);
     } else {
-      ui.alert('Sorteio feito! 🎉',
-        n + ' e-mails enviados. Nem você sabe quem tirou quem.\nPeça para todos olharem a caixa de entrada (e o spam).\n\nAinda restam ' + MailApp.getRemainingDailyQuota() + ' e-mails hoje.', ui.ButtonSet.OK);
+      ui.alert('Sorteio #' + apelido + ' feito! 🎉',
+        n + ' e-mails enviados. Nem você sabe quem tirou quem.\nPeça para todos olharem a caixa de entrada (e o spam).\n\nAinda restam ' + MailApp.getRemainingDailyQuota() + ' e-mails hoje.' + textoCodigo, ui.ButtonSet.OK);
     }
   } catch (e) {
     ui.alert('Erro', String(e.message || e), ui.ButtonSet.OK);
@@ -212,16 +234,51 @@ function menuSortear() {
   }
 }
 
+/** Refaz o sorteio a partir do código e reenvia o e-mail de UMA pessoa. Ninguém vê o resultado na tela. */
+function menuReenviar() {
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var d = lerDados_(), v = checar_(d);
+    if (!v.viavel) return ui.alert('A lista mudou ou tem erros', '• ' + v.erros.join('\n• '), ui.ButtonSet.OK);
+
+    var r1 = ui.prompt('Reenviar e-mail (1/2)', 'Cole o código de recuperação do sorteio (1-XXXX-XXXX-XXXX-XXXX-XXXX):', ui.ButtonSet.OK_CANCEL);
+    if (r1.getSelectedButton() !== ui.Button.OK) return;
+    var c = Sorteio.lerCodigo(r1.getResponseText(), d.participantes, d.regras);
+    if (!c.ok) return ui.alert('Código não confere', c.erro, ui.ButtonSet.OK);
+
+    var r2 = ui.prompt('Reenviar e-mail (2/2)',
+      'Nome ou e-mail de quem vai receber de novo.\n(Se o e-mail dessa pessoa estava errado, corrija na aba antes: o e-mail não muda o sorteio.)',
+      ui.ButtonSet.OK_CANCEL);
+    if (r2.getSelectedButton() !== ui.Button.OK) return;
+    var alvo = busca_(r2.getResponseText()), achados = [];
+    d.participantes.forEach(function (p, i) { if (alvo && (busca_(p.nome) === alvo || busca_(p.email) === alvo)) achados.push(i); });
+    if (achados.length !== 1)
+      return ui.alert('Pessoa não encontrada', (achados.length ? 'Há ' + achados.length + ' pessoas com esse nome; use o e-mail.' : 'Ninguém na lista com esse nome ou e-mail.'), ui.ButtonSet.OK);
+    if (MailApp.getRemainingDailyQuota() < 1) return ui.alert('Cota diária esgotada', 'Tente amanhã.', ui.ButtonSet.OK);
+
+    var destino = Sorteio.sortear(d.participantes, d.regras, c.rnd), i = achados[0];
+    enviarResultado_(d.participantes[i], d.participantes[destino[i]], d.evento, c.apelido);
+    ui.alert('E-mail reenviado',
+      'Reenviei o resultado do sorteio #' + c.apelido + ' para ' + d.participantes[i].nome + ' (' + d.participantes[i].email + ').\nÉ o mesmo resultado do sorteio original.', ui.ButtonSet.OK);
+  } catch (e) {
+    ui.alert('Erro', String(e.message || e), ui.ButtonSet.OK);
+  }
+}
+
+function busca_(s) {
+  return String(s == null ? '' : s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 /* ------------------------------------------------------------------- e-mail */
 
-function enviarResultado_(quem, tirou, ev) {
+function enviarResultado_(quem, tirou, ev, apelido) {
   var linhas = [['Data da festa', ev.dataFesta], ['Local', ev.local], ['Valor sugerido', ev.valor], ['Organização', ev.organizador]]
     .filter(function (l) { return l[1]; });
 
   var texto = ['Olá, ' + quem.nome + '!', '', 'No ' + ev.nome + ', você tirou:', '', '*** ' + tirou.nome + ' ***', '']
     .concat(linhas.map(function (l) { return l[0] + ': ' + l[1]; }))
     .concat(ev.mensagem ? ['', ev.mensagem] : [])
-    .concat(['', 'Guarde segredo! 🤫', '', '💙 Sorteio grátis, em parceria com a AMA. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista: https://ama.org.br/doacao-via-nota-fiscal/']).join('\n');
+    .concat(['', 'Guarde segredo! 🤫' + (apelido ? ' · Sorteio #' + apelido : ''), '', '💙 Sorteio grátis, em parceria com a AMA. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista: https://ama.org.br/doacao-via-nota-fiscal/']).join('\n');
 
   var tabela = linhas.map(function (l) {
     return '<tr><td style="padding:4px 12px 4px 0;color:' + COR.cinza + '">' + esc_(l[0]) + '</td>' +
@@ -233,7 +290,7 @@ function enviarResultado_(quem, tirou, ev) {
     '<p style="margin:12px 0 20px;font-size:30px;font-weight:800;color:' + COR.azul + '">' + esc_(tirou.nome) + '</p>' +
     '<table style="border-collapse:collapse;font-size:14px">' + tabela + '</table>' +
     (ev.mensagem ? '<p style="margin:20px 0 0;color:' + COR.grafite + ';white-space:pre-line">' + esc_(ev.mensagem) + '</p>' : '') +
-    '<p style="margin:24px 0 0;color:' + COR.cinza + ';font-size:13px">Guarde segredo! 🤫</p>' +
+    '<p style="margin:24px 0 0;color:' + COR.cinza + ';font-size:13px">Guarde segredo! 🤫' + (apelido ? ' · Sorteio #' + esc_(apelido) : '') + '</p>' +
     '<p style="margin:20px 0 0;padding:12px;background:#eef4fb;border-radius:8px;font-size:13px;color:' + COR.grafite + '">💙 Este sorteio é grátis, em parceria com a <b>AMA – Associação de Amigos do Autista</b>. Para retribuir sem gastar nada, ative a doação automática da Nota Fiscal Paulista (leva menos de 5 minutos): <a href="https://ama.org.br/doacao-via-nota-fiscal/">ama.org.br/doacao-via-nota-fiscal</a></p>';
 
   MailApp.sendEmail({
